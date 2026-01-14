@@ -217,9 +217,14 @@ func (e *TextView) FindAllWordOccurrences(start, end int, bySpace bool) [][2]int
 // spanning from start to end (exclusive). This implementation scans the document once with O(n) complexity.
 // It matches exact rune sequences regardless of word boundaries.
 func (e *TextView) FindAllTextOccurrences(start, end int) [][2]int {
-	if start >= end {
+	if start == end {
 		return nil
 	}
+	
+	if start > end {
+		start, end = end, start
+	}
+
 	textLen := end - start
 	// Read the target text runes for comparison
 	targetText := make([]rune, textLen)
