@@ -11,6 +11,7 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	lt "github.com/oligo/gvcode/internal/layout"
+	"github.com/oligo/gvcode/internal/painter"
 )
 
 // calculateViewSize determines the size of the current visible content,
@@ -42,6 +43,36 @@ func (e *TextView) PaintText(gtx layout.Context, material op.CallOp) {
 	e.textPainter.Paint(gtx, e.shaper, e.layouter.Lines, material, e.syntaxStyles, e.decorations)
 }
 
+// selectionPolygons creates clip.PathSpecs for the given selection regions,
+// grouping non-overlapping rectangles into separate polygons.
+func (e *TextView) selectionPolygons(gtx layout.Context, regions []lt.Region) []clip.PathSpec {
+	if len(regions) == 0 {
+		return nil
+	}
+
+	// Prepare rectangles with padding
+	rects := make([]image.Rectangle, len(regions))
+	for i, region := range regions {
+		rects[i] = e.adjustPadding(region.Bounds)
+	}
+
+	expandEmptyRegion := len(regions) > 1
+	minWidth := gtx.Dp(unit.Dp(6))
+	pointGroups := painter.PolygonGroupsForRects(rects, expandEmptyRegion, minWidth)
+
+	// Build paths with rounded corners for each group
+	radius := float32(gtx.Dp(unit.Dp(4))) // 2dp corner radius
+	paths := make([]clip.PathSpec, 0, len(pointGroups))
+	for _, points := range pointGroups {
+		if len(points) >= 3 {
+			path := painter.PathForPolygon(gtx, points, radius)
+			paths = append(paths, path)
+		}
+	}
+
+	return paths
+}
+
 // PaintSelection clips and paints the visible text selection rectangles using
 // the provided material to fill the rectangles.
 func (e *TextView) PaintSelection(gtx layout.Context, material op.CallOp) {
@@ -50,16 +81,15 @@ func (e *TextView) PaintSelection(gtx layout.Context, material op.CallOp) {
 	defer clip.Rect(localViewport).Push(gtx.Ops).Pop()
 	e.regions = e.layouter.Locate(docViewport, e.caret.start, e.caret.end, e.regions)
 	//log.Println("regions count: ", len(e.regions), e.regions)
-	expandEmptyRegion := len(e.regions) > 1
-	for _, region := range e.regions {
-		bounds := e.adjustPadding(region.Bounds)
-		if expandEmptyRegion && bounds.Dx() <= 0 {
-			bounds.Max.X += gtx.Dp(unit.Dp(2))
-		}
-		area := clip.Rect(bounds).Push(gtx.Ops)
+	if len(e.regions) == 0 {
+		return
+	}
+	paths := e.selectionPolygons(gtx, e.regions)
+	for _, path := range paths {
+		outline := clip.Outline{Path: path}.Op().Push(gtx.Ops)
 		material.Add(gtx.Ops)
 		paint.PaintOp{}.Add(gtx.Ops)
-		area.Pop()
+		outline.Pop()
 	}
 }
 
@@ -245,7 +275,4 @@ func (e *TextView) adjustDescentPadding() int {
 
 	leading := (e.lineHeight - height).Round()
 	return int(math.Round(float64(float32(leading) / 2.0)))
-}
-
-type TextViewSplitter struct {
 }
