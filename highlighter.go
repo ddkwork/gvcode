@@ -21,7 +21,7 @@ const (
 type wordHighlighter struct {
 	editor       *Editor
 	lastCaretPos int
-	dirty        bool
+	active       bool
 }
 
 func (wh *wordHighlighter) HighlightAtCaret(highlightColor color.Color) error {
@@ -37,7 +37,7 @@ func (wh *wordHighlighter) HighlightAtCaret(highlightColor color.Color) error {
 
 	defer func() {
 		wh.lastCaretPos = caretStart
-		wh.dirty = false
+		wh.active = false
 	}()
 
 	start, end := wh.editor.text.WordBoundariesAt(caretStart, false)
@@ -75,7 +75,7 @@ func (wh *wordHighlighter) HighlightAtCaret(highlightColor color.Color) error {
 
 func (wh *wordHighlighter) IsDirty() bool {
 	caretStart, _ := wh.editor.Selection()
-	return caretStart != wh.lastCaretPos || wh.dirty
+	return caretStart != wh.lastCaretPos && wh.active
 }
 
 // Clear removes all word highlight decorations.
@@ -83,9 +83,12 @@ func (wh *wordHighlighter) Clear() {
 	wh.editor.ClearDecorations(wordHighlightSource)
 }
 
-// MarkDirty marks that word highlighting needs to be updated.
-func (wh *wordHighlighter) MarkDirty() {
-	wh.dirty = true
+// MarkActive marks that word highlighting needs to be updated or not.
+func (wh *wordHighlighter) MarkActive(active bool) {
+	wh.active = active
+	if !active {
+		wh.editor.ClearDecorations(wordHighlightSource)
+	}
 }
 
 // selectionHighlighter finds the currently selected text and highlights
@@ -120,12 +123,6 @@ func (sh *selectionHighlighter) HighlightSelection(highlightColor color.Color) e
 		return nil
 	}
 
-	// Get selected text
-	selectedText := sh.editor.SelectedText()
-	if selectedText == "" {
-		return nil
-	}
-
 	occurrences := sh.editor.text.FindAllTextOccurrences(start, end)
 	if len(occurrences) == 0 {
 		return nil
@@ -146,6 +143,11 @@ func (sh *selectionHighlighter) HighlightSelection(highlightColor color.Color) e
 
 	decos := make([]decoration.Decoration, 0, len(occurrences))
 	for _, occ := range occurrences {
+		// Exclude the current selection.
+		if min(start, end) == occ[0] && max(start, end) == occ[1] {
+			continue
+		}
+
 		decos = append(decos, decoration.Decoration{
 			Source: selectionHighlightSource,
 			Start:  occ[0],
@@ -178,13 +180,4 @@ func (sh *selectionHighlighter) Clear() {
 // MarkDirty marks that selection highlighting needs to be updated.
 func (sh *selectionHighlighter) MarkDirty() {
 	sh.dirty = true
-}
-
-// UpdateLastState updates the internal state after highlighting.
-// Should be called after successful highlighting.
-func (sh *selectionHighlighter) UpdateLastState() {
-	start, end := sh.editor.Selection()
-	sh.lastSelectionID = start<<32 | end
-	sh.lastSelection = sh.editor.SelectedText()
-	sh.dirty = false
 }

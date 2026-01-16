@@ -200,6 +200,7 @@ func main() {
 		gvcode.WithLineNumber(true),
 		gvcode.WithAutoCompletion(cm),
 		gvcode.WithColorScheme(colorScheme),
+		gvcode.WithCornerRadius(unit.Dp(4)),
 	)
 
 	tokens := HightlightTextByPattern(editorApp.state.Text(), syntaxPattern)

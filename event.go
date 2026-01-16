@@ -36,6 +36,13 @@ func (e *Editor) processEvents(gtx layout.Context) (ev EditorEvent, ok bool) {
 				ok = true
 			}
 		}
+
+		switch ev.(type) {
+		case ChangeEvent:
+			e.wordHighlighter.MarkActive(false)
+		case SelectEvent:
+			e.wordHighlighter.MarkActive(true)
+		}
 	}()
 
 	ev, ok = e.processPointer(gtx)
