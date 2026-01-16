@@ -10,18 +10,39 @@ import (
 	"gioui.org/op/clip"
 )
 
-// PolygonGroupsForRects groups rectangles by horizontal overlap and generates
+// PolygonBuilder detects how many polygons can be formed from a group of rectangles, then
+// extarcts vertices for each of them. To draw the polygons in Gio, call Path or Paths to
+// build the clip paths.
+type PolygonBuilder struct {
+	// Apply minimum width to zero-width rectangles if set to true.
+	expandEmpty bool
+	minWidth    int
+	// radius is the corner radius in pixels.
+	radius float32
+	// polygons holds points for the detected polygons
+	polygons [][]f32.Point
+}
+
+func NewPolygonBuilder(expandEmpty bool, minWidth int, radius float32) *PolygonBuilder {
+	return &PolygonBuilder{
+		expandEmpty: expandEmpty,
+		minWidth:    minWidth,
+		radius:      radius,
+	}
+}
+
+// Group groups rectangles by horizontal overlap and generates
 // polygon points for each group. Returns a slice of point slices, one per group.
-func PolygonGroupsForRects(rects []image.Rectangle, expandEmpty bool, minWidth int) [][]f32.Point {
+func (pb *PolygonBuilder) Group(rects []image.Rectangle) [][]f32.Point {
 	if len(rects) == 0 {
 		return nil
 	}
 
 	// Apply minimum width to zero-width rectangles
-	if expandEmpty {
+	if pb.expandEmpty {
 		for i := range rects {
 			if rects[i].Dx() <= 0 {
-				rects[i].Max.X += minWidth
+				rects[i].Max.X += pb.minWidth
 			}
 		}
 	}
@@ -66,8 +87,8 @@ func PolygonGroupsForRects(rects []image.Rectangle, expandEmpty bool, minWidth i
 		groups = append(groups, currentGroup)
 	}
 
+	pb.polygons = pb.polygons[:0]
 	// For each group, generate polygon points
-	var allGroups [][]f32.Point
 	for _, group := range groups {
 		if len(group) == 0 {
 			continue
@@ -83,11 +104,11 @@ func PolygonGroupsForRects(rects []image.Rectangle, expandEmpty bool, minWidth i
 		// Generate points for this group using the original logic
 		points := polygonPointsForGroup(group)
 		if len(points) > 0 {
-			allGroups = append(allGroups, points)
+			pb.polygons = append(pb.polygons, points)
 		}
 	}
 
-	return allGroups
+	return pb.polygons
 }
 
 // polygonPointsForGroup generates points for a single group of rectangles
@@ -116,15 +137,14 @@ func polygonPointsForGroup(rects []image.Rectangle) []f32.Point {
 	return points
 }
 
-// PathForPolygon creates a path with rounded corners from polygon points.
-// radius is the corner radius in pixels.
-func PathForPolygon(gtx layout.Context, points []f32.Point, radius float32) clip.PathSpec {
+// Path creates a path with rounded corners from polygon points.
+func (pb *PolygonBuilder) Path(gtx layout.Context, points []f32.Point) clip.PathSpec {
 	if len(points) < 3 {
 		return clip.PathSpec{}
 	}
 
 	// Determine which corners should be rounded (using original points)
-	roundedCorners := cornersToRound(points, radius)
+	roundedCorners := cornersToRound(points, pb.radius)
 
 	// Remove duplicate consecutive points
 	cleanPoints := make([]f32.Point, 0, len(points))
@@ -190,18 +210,18 @@ func PathForPolygon(gtx layout.Context, points []f32.Point, radius float32) clip
 		} else {
 			// Fallback to original logic
 			isRightAngle := isRightAngle(p1, p2, p3)
-			canRound = isRightAngle && len1 > radius && len2 > radius
+			canRound = isRightAngle && len1 > pb.radius && len2 > pb.radius
 		}
 
 		if canRound {
 			// Calculate points where rounded corner starts and ends
 			cornerStart := f32.Point{
-				X: p2.X - v1n.X*radius,
-				Y: p2.Y - v1n.Y*radius,
+				X: p2.X - v1n.X*pb.radius,
+				Y: p2.Y - v1n.Y*pb.radius,
 			}
 			cornerEnd := f32.Point{
-				X: p2.X + v2n.X*radius,
-				Y: p2.Y + v2n.Y*radius,
+				X: p2.X + v2n.X*pb.radius,
+				Y: p2.Y + v2n.Y*pb.radius,
 			}
 
 			// Draw line to where rounded corner starts
@@ -218,6 +238,18 @@ func PathForPolygon(gtx layout.Context, points []f32.Point, radius float32) clip
 	path.Close()
 
 	return path.End()
+}
+
+func (pb *PolygonBuilder) Paths(gtx layout.Context) []clip.PathSpec {
+	paths := make([]clip.PathSpec, 0, len(pb.polygons))
+	for _, points := range pb.polygons {
+		if len(points) >= 3 {
+			path := pb.Path(gtx, points)
+			paths = append(paths, path)
+		}
+	}
+
+	return paths
 }
 
 // isRightAngle checks if three points form approximately a right angle.

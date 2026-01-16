@@ -53,24 +53,20 @@ func (e *TextView) selectionPolygons(gtx layout.Context, regions []lt.Region) []
 	// Prepare rectangles with padding
 	rects := make([]image.Rectangle, len(regions))
 	for i, region := range regions {
-		rects[i] = e.adjustPadding(region.Bounds)
+		rects[i] = region.Bounds
 	}
 
 	expandEmptyRegion := len(regions) > 1
 	minWidth := gtx.Dp(unit.Dp(6))
-	pointGroups := painter.PolygonGroupsForRects(rects, expandEmptyRegion, minWidth)
-
 	// Build paths with rounded corners for each group
-	radius := float32(gtx.Dp(unit.Dp(4))) // 2dp corner radius
-	paths := make([]clip.PathSpec, 0, len(pointGroups))
-	for _, points := range pointGroups {
-		if len(points) >= 3 {
-			path := painter.PathForPolygon(gtx, points, radius)
-			paths = append(paths, path)
-		}
+	radius := gtx.Dp(e.CornerRadius)
+	if radius <= 0 {
+		radius = gtx.Dp(unit.Dp(2))
 	}
 
-	return paths
+	polygonBuilder := painter.NewPolygonBuilder(expandEmptyRegion, minWidth, float32(radius))
+	polygonBuilder.Group(rects)
+	return polygonBuilder.Paths(gtx)
 }
 
 // PaintSelection clips and paints the visible text selection rectangles using

@@ -66,6 +66,9 @@ type TextView struct {
 	// While for hard tab, this controls the maximum width of the 'tab' glyph to expand to.
 	TabWidth int
 
+	// CornerRadius set the radius when drawing selection polygons and other corners that apply.
+	CornerRadius unit.Dp
+
 	// WrapLine configures whether the displayed text will be broken into lines or not.
 	WrapLine bool
 

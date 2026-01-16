@@ -62,6 +62,14 @@ func WithLineHeight(lineHeight unit.Sp, lineHeightScale float32) EditorOption {
 	}
 }
 
+// Set a radis value for the corners of selection polygons or borders of other shapes.
+func WithCornerRadius(radius unit.Dp) EditorOption {
+	return func(e *Editor) {
+		e.initBuffer()
+		e.text.CornerRadius = radius
+	}
+}
+
 // WithTabWidth set how many spaces to represent a tab character. In the case of
 // soft tab, this determines the number of space characters to insert into the editor.
 // While for hard tab, this controls the maximum width of the 'tab' glyph to expand to.

@@ -9,9 +9,9 @@ import (
 
 func TestIsRightAngle(t *testing.T) {
 	tests := []struct {
-		name     string
+		name       string
 		p1, p2, p3 f32.Point
-		want     bool
+		want       bool
 	}{
 		{
 			name: "90 degree angle",
@@ -55,11 +55,11 @@ func TestIsRightAngle(t *testing.T) {
 
 func TestPolygonPoints(t *testing.T) {
 	tests := []struct {
-		name         string
-		rects        []image.Rectangle
-		expandEmpty  bool
-		minWidth     int
-		wantPoints   []f32.Point
+		name        string
+		rects       []image.Rectangle
+		expandEmpty bool
+		minWidth    int
+		wantPoints  []f32.Point
 	}{
 		{
 			name:        "empty",
@@ -241,7 +241,7 @@ func TestCornersToRound(t *testing.T) {
 				{Min: image.Pt(10, 20), Max: image.Pt(50, 40)},
 				{Min: image.Pt(10, 40), Max: image.Pt(50, 60)},
 			},
-			radius:     2.0,
+			radius: 2.0,
 			// After duplicate removal, points: top-right0, bottom-right0, bottom-right1, bottom-left1, top-left1, top-left0
 			// Corners: bottom-right0 (interior straight), bottom-right1 (right angle), bottom-left1 (right angle), top-left1 (interior straight), top-left0 (right angle), top-right0 (right angle)
 			// Only external right-angle corners rounded
@@ -286,21 +286,21 @@ func TestCornersToRound(t *testing.T) {
 }
 func TestPolygonGroupsForRects(t *testing.T) {
 	tests := []struct {
-		name         string
-		rects        []image.Rectangle
-		expandEmpty  bool
-		minWidth     int
+		name           string
+		rects          []image.Rectangle
+		expandEmpty    bool
+		minWidth       int
 		wantGroupCount int // expected number of groups
 	}{
 		{
 			name: "empty line between text lines",
 			rects: []image.Rectangle{
-				{Min: image.Pt(20, 0), Max: image.Pt(100, 20)},   // text line 1
-				{Min: image.Pt(0, 20), Max: image.Pt(0, 40)},     // empty line (zero width)
-				{Min: image.Pt(40, 40), Max: image.Pt(120, 60)},  // text line 2 (different X)
+				{Min: image.Pt(20, 0), Max: image.Pt(100, 20)},  // text line 1
+				{Min: image.Pt(0, 20), Max: image.Pt(0, 40)},    // empty line (zero width)
+				{Min: image.Pt(40, 40), Max: image.Pt(120, 60)}, // text line 2 (different X)
 			},
-			expandEmpty: true,
-			minWidth:    6,
+			expandEmpty:    true,
+			minWidth:       6,
 			wantGroupCount: 3, // each rectangle forms separate group due to no horizontal overlap
 		},
 		{
@@ -309,8 +309,8 @@ func TestPolygonGroupsForRects(t *testing.T) {
 				{Min: image.Pt(10, 0), Max: image.Pt(50, 20)},
 				{Min: image.Pt(100, 50), Max: image.Pt(150, 70)}, // far away, not connected
 			},
-			expandEmpty: false,
-			minWidth:    0,
+			expandEmpty:    false,
+			minWidth:       0,
 			wantGroupCount: 2, // should be two separate polygons
 		},
 		{
@@ -320,15 +320,17 @@ func TestPolygonGroupsForRects(t *testing.T) {
 				{Min: image.Pt(10, 20), Max: image.Pt(50, 40)},
 				{Min: image.Pt(10, 40), Max: image.Pt(50, 60)},
 			},
-			expandEmpty: false,
-			minWidth:    0,
+			expandEmpty:    false,
+			minWidth:       0,
 			wantGroupCount: 1, // all overlap horizontally, one polygon
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			groups := PolygonGroupsForRects(tt.rects, tt.expandEmpty, tt.minWidth)
+			builder := NewPolygonBuilder(tt.expandEmpty, tt.minWidth, 0)
+
+			groups := builder.Group(tt.rects)
 			if len(groups) != tt.wantGroupCount {
 				t.Errorf("PolygonGroupsForRects() returned %d groups, want %d", len(groups), tt.wantGroupCount)
 				t.Logf("groups: %v", groups)
