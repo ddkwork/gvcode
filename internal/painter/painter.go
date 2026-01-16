@@ -2,6 +2,7 @@ package painter
 
 import (
 	"image"
+	"math"
 	"reflect"
 
 	"gioui.org/f32"
@@ -28,11 +29,17 @@ type TextPainter struct {
 	// runBuffer buffers runs of a line. This is passed down to the splitter to
 	// decrease allocations. It works as we are rendering line by line.
 	runBuffer []RenderRun
+	// line height calculated when layouting the document.
+	lineHeight fixed.Int26_6
 }
 
 func (tp *TextPainter) SetViewport(viewport image.Rectangle, scrollOff image.Point) {
 	tp.viewport = viewport
 	tp.scrollOff = scrollOff
+}
+
+func (tp *TextPainter) SetLineHeight(lineHeight fixed.Int26_6) {
+	tp.lineHeight = lineHeight
 }
 
 // Paint paints text and various styles originated from syntax hignlighting or decorations.
@@ -109,7 +116,7 @@ func (tp *TextPainter) paintLine(gtx layout.Context, shaper *text.Shaper, lineOf
 
 		// draw background
 		if run.Bg != (op.CallOp{}) {
-			rect := run.Bounds()
+			rect := tp.adjustPadding(run.Bounds())
 			bgClip := clip.Rect(rect).Push(gtx.Ops)
 			run.Bg.Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
@@ -210,7 +217,7 @@ func (tp *TextPainter) drawStrikethrough(gtx layout.Context, run *RenderRun, mat
 }
 
 func (tp *TextPainter) drawBorder(gtx layout.Context, run *RenderRun, material op.CallOp) {
-	rect := clip.Rect(run.Bounds())
+	rect := clip.Rect(tp.adjustPadding(run.Bounds()))
 	if run.Border.Color != (op.CallOp{}) {
 		material = run.Border.Color
 	}
@@ -277,6 +284,25 @@ func (tp *TextPainter) drawSquiggle(gtx layout.Context, run *RenderRun, material
 	}
 
 	tp.drawStroke(gtx, path.End(), material)
+}
+
+// adjustPadding adjusts the vertical padding of a bounding box around the texts.
+// This improves the visual effects of texts to be highlighted.
+func (tp *TextPainter) adjustPadding(bounds image.Rectangle) image.Rectangle {
+	if tp.lineHeight <= 0 {
+		return bounds
+	}
+
+	if tp.lineHeight.Ceil() <= bounds.Dy() {
+		return bounds
+	}
+
+	leading := tp.lineHeight.Ceil() - bounds.Dy()
+	adjust := int(math.Round(float64(float32(leading) / 2.0)))
+
+	bounds.Min.Y -= adjust
+	bounds.Max.Y += leading - adjust
+	return bounds
 }
 
 // processGlyph checks whether the glyph is visible within the configured
