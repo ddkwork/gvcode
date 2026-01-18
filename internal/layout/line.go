@@ -48,15 +48,31 @@ func (li *Line) append(glyphs ...text.Glyph) {
 
 // recompute re-compute xOff of the line and each glyph contained in the line,
 // and also update the runeOff to the right value.
+// For bidi text, we preserve the relative positions of glyphs (which are correct
+// from the shaper) and only apply the alignment offset.
 func (li *Line) recompute(alignOff fixed.Int26_6, runeOff int) {
-	xOff := fixed.I(0)
+	if len(li.Glyphs) == 0 {
+		li.RuneOff = runeOff
+		return
+	}
+
+	// Find the minimum X (leftmost visual position) of all glyphs.
+	// This serves as the origin for the line.
+	minX := li.Glyphs[0].X
+	for _, gl := range li.Glyphs {
+		if gl.X < minX {
+			minX = gl.X
+		}
+	}
+
+	// Shift all glyphs so that the leftmost is at alignOff.
+	// This preserves the relative positioning (important for bidi text).
+	shift := alignOff - minX
 	for idx, gl := range li.Glyphs {
-		gl.X = alignOff + fixed.Int26_6(xOff)
+		gl.X += shift
 		if idx == len(li.Glyphs)-1 {
 			gl.Flags |= text.FlagLineBreak
 		}
-
-		xOff += gl.Advance
 	}
 
 	li.RuneOff = runeOff
