@@ -4,6 +4,8 @@ import (
 	"gioui.org/font"
 	"gioui.org/text"
 	"gioui.org/unit"
+	"github.com/oligo/gvcode/gutter"
+	"github.com/oligo/gvcode/gutter/providers"
 	"github.com/oligo/gvcode/textstyle/syntax"
 )
 
@@ -139,18 +141,19 @@ func WrapLine(enabled bool) EditorOption {
 	}
 }
 
+// Deprecated. Please use [WithGutter] or [WithDefaultGutters]
 // WithLineNumber configures whether to show line number or not.
 func WithLineNumber(enabled bool) EditorOption {
 	return func(e *Editor) {
 		e.initBuffer()
-		e.showLineNumber = enabled
+		// nothing to do.
 	}
 }
 
-func WithLineNumberGutterGap(gap unit.Dp) EditorOption {
+func WithGutterGap(gap unit.Dp) EditorOption {
 	return func(e *Editor) {
 		e.initBuffer()
-		e.lineNumberGutterGap = gap
+		e.gutterGap = gap
 	}
 }
 
@@ -178,5 +181,29 @@ type BeforePasteHook func(text string) string
 func AddBeforePasteHook(hook BeforePasteHook) EditorOption {
 	return func(ed *Editor) {
 		ed.onPaste = hook
+	}
+}
+
+// WithGutter adds a gutter provider to the editor. Creates a gutter manager if needed.
+// Multiple providers can be added by calling this function multiple times.
+func WithGutter(provider gutter.GutterProvider) EditorOption {
+	return func(e *Editor) {
+		e.initBuffer()
+		if e.gutterManager == nil {
+			e.gutterManager = gutter.NewManager()
+		}
+		e.gutterManager.Register(provider)
+	}
+}
+
+// WithDefaultGutters enables line numbers via the new gutter system.
+// This is the recommended way to enable line numbers for new code.
+func WithDefaultGutters() EditorOption {
+	return func(e *Editor) {
+		e.initBuffer()
+		if e.gutterManager == nil {
+			e.gutterManager = gutter.NewManager()
+		}
+		e.gutterManager.Register(providers.NewLineNumberProvider())
 	}
 }

@@ -158,12 +158,18 @@ func (li *Line) All() iter.Seq[text.Glyph] {
 }
 
 // Paragraph contains the pixel coordinates of the start and end position
-// of the paragraph.
+// of the paragraph. A paragraph contains one or more wrapped screen lines.
 type Paragraph struct {
+	// StartX is the position of the first glyph in the document coordinates.
 	StartX fixed.Int26_6
+	// StartY is the baseline position of the first screen line in the document coordinates.
 	StartY int
-	EndX   fixed.Int26_6
-	EndY   int
+	// EndX is position of the last glyph in the document coordinates.
+	EndX fixed.Int26_6
+	// EndY is the baseline position of the last screen line in the document coordinates.
+	EndY int
+
+	Ascent, Descent fixed.Int26_6
 	// Runes is the number of runes represented by this paragraph.
 	Runes int
 	// RuneOff tracks the rune offset of the first rune of the paragraph in the document.
@@ -184,9 +190,12 @@ func (p *Paragraph) Add(li Line) bool {
 		p.EndY = int(lastGlyph.Y)
 
 		p.RuneOff = li.RuneOff
+		p.Ascent = start.Ascent
+		p.Descent = start.Descent
 	} else {
 		p.EndX = lastGlyph.X
 		p.EndY = int(lastGlyph.Y)
+		p.Descent = lastGlyph.Descent
 	}
 
 	p.Runes += li.Runes

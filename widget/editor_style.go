@@ -29,7 +29,7 @@ func NewEditor(th *material.Theme) *gvcode.Editor {
 		gvcode.WithTextAlignment(text.Start),
 		gvcode.WithLineHeight(0, 1.2),
 		gvcode.WithTabWidth(4),
-		gvcode.WithLineNumberGutterGap(unit.Dp(24)),
+		gvcode.WithGutterGap(unit.Dp(24)),
 		gvcode.WithColorScheme(colorScheme),
 	)
 

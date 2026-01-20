@@ -19,6 +19,7 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	"github.com/oligo/gvcode/color"
+	"github.com/oligo/gvcode/gutter"
 	"github.com/oligo/gvcode/internal/buffer"
 	gestureExt "github.com/oligo/gvcode/internal/gesture"
 	"github.com/oligo/gvcode/textview"
@@ -36,10 +37,11 @@ type Editor struct {
 	snippetCtx *snippetContext
 	// colorPalette configures the color scheme used for syntax highlighting.
 	colorPalette *color.ColorPalette
-	// LineNumberGutterGap specifies the right inset between the line number and the
+	// gutterGap specifies the right inset between the gutter and the
 	// editor text area.
-	lineNumberGutterGap unit.Dp
-	showLineNumber      bool
+	gutterGap unit.Dp
+	// gutterManager manages multiple gutter providers (line numbers, breakpoints, etc.)
+	gutterManager *gutter.Manager
 	// hooks
 	onPaste   BeforePasteHook
 	completor Completion
@@ -185,30 +187,31 @@ func (e *Editor) Layout(gtx layout.Context, lt *text.Shaper) layout.Dimensions {
 		Axis: layout.Horizontal,
 	}.Layout(gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			if !e.showLineNumber {
-				return layout.Dimensions{}
+			if e.gutterManager != nil && e.gutterManager.HasProviders() {
+				ctx := e.buildGutterContext(gtx, lt)
+
+				// Process gutter events
+				for {
+					evt, ok := e.gutterManager.Update(gtx)
+					if !ok {
+						break
+					}
+					e.pending = append(e.pending, gutterEventWrapper{Event: evt})
+				}
+
+				dims := layout.Inset{Right: max(0, e.gutterGap)}.Layout(gtx,
+					func(gtx layout.Context) layout.Dimensions {
+						return e.gutterManager.Layout(gtx, ctx)
+					})
+
+				e.gutterWidth = dims.Size.X
+
+				lineColor := e.colorPalette.LineColor
+				e.text.HighlightLine(gtx, lineColor.Op(gtx.Ops))
+				return dims
 			}
 
-			dims := layout.Inset{Right: max(0, e.lineNumberGutterGap)}.Layout(gtx,
-				func(gtx layout.Context) layout.Dimensions {
-					var lineNumberColor, lineNumberColor2, lineColor color.Color
-					if e.colorPalette.LineNumberColor.IsSet() {
-						lineNumberColor = e.colorPalette.LineNumberColor
-					} else {
-						lineNumberColor = color.Color{}.MulAlpha(255)
-					}
-					lineNumberColor2 = lineNumberColor.MulAlpha(0x90)
-
-					if e.colorPalette.LineColor.IsSet() {
-						lineColor = e.colorPalette.LineColor
-					} else {
-						lineColor = e.colorPalette.Foreground.MulAlpha(0x30)
-					}
-
-					return e.text.PaintLineNumber(gtx, lt, lineNumberColor2.Op(gtx.Ops), lineNumberColor.Op(gtx.Ops), lineColor.Op(gtx.Ops))
-				})
-			e.gutterWidth = dims.Size.X
-			return dims
+			return layout.Dimensions{}
 		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			e.text.Layout(gtx, lt)
@@ -754,6 +757,69 @@ func sign(n int) int {
 	}
 }
 
-func (s ChangeEvent) isEditorEvent() {}
-func (s SelectEvent) isEditorEvent() {}
-func (s HoverEvent) isEditorEvent()  {}
+func (s ChangeEvent) isEditorEvent()        {}
+func (s SelectEvent) isEditorEvent()        {}
+func (s HoverEvent) isEditorEvent()         {}
+func (s gutterEventWrapper) isEditorEvent() {}
+
+// gutterEventWrapper wraps gutter events to implement EditorEvent.
+type gutterEventWrapper struct {
+	Event gutter.GutterEvent
+}
+
+// GutterManager returns the editor's gutter manager, if one is configured.
+func (e *Editor) GutterManager() *gutter.Manager {
+	return e.gutterManager
+}
+
+// buildGutterContext creates a GutterContext from the current editor state.
+func (e *Editor) buildGutterContext(gtx layout.Context, shaper *text.Shaper) gutter.GutterContext {
+	viewport := e.text.Viewport()
+	textLayout := e.text.TextLayout()
+
+	// Convert internal Paragraphs to gutter.Paragraph slice
+	paragraphs := make([]gutter.Paragraph, 0, len(textLayout.Paragraphs))
+	for i, p := range textLayout.Paragraphs {
+		// Skip paragraphs outside the viewport
+		if p.EndY < viewport.Min.Y {
+			continue
+		}
+		if p.StartY > viewport.Max.Y {
+			break
+		}
+		paragraphs = append(paragraphs, gutter.Paragraph{
+			StartY:  p.StartY,
+			EndY:    p.EndY,
+			Ascent:  p.Ascent,
+			Descent: p.Descent,
+			Runes:   p.Runes,
+			RuneOff: p.RuneOff,
+			Index:   i,
+		})
+	}
+
+	// Determine current line (-1 if selection spans multiple lines)
+	currentLine := -1
+	if start, end := e.text.Selection(); start == end {
+		currentLine, _ = e.text.CaretPos()
+	}
+
+	return gutter.GutterContext{
+		Shaper:      shaper,
+		TextParams:  e.text.Params(),
+		Viewport:    viewport,
+		Paragraphs:  paragraphs,
+		CurrentLine: currentLine,
+		LineHeight:  e.text.GetLineHeight(),
+		Colors:      e.gutterColors(),
+	}
+}
+
+// gutterColors returns the GutterColors based on the color palette.
+func (e *Editor) gutterColors() *gutter.GutterColors {
+	if e.colorPalette == nil {
+		return &gutter.GutterColors{}
+	}
+
+	return e.colorPalette.GutterColors()
+}

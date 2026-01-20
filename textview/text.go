@@ -319,6 +319,31 @@ func (e *TextView) ScrollOff() image.Point {
 	return e.scrollOff
 }
 
+// Viewport returns the currently visible viewport as a rectangle in document coordinates.
+func (e *TextView) Viewport() image.Rectangle {
+	return image.Rectangle{
+		Min: e.scrollOff,
+		Max: e.viewSize.Add(e.scrollOff),
+	}
+}
+
+// Params returns the current text parameters.
+func (e *TextView) Params() text.Parameters {
+	return e.params
+}
+
+// GetLineHeight returns the calculated line height.
+func (e *TextView) GetLineHeight() fixed.Int26_6 {
+	return e.lineHeight
+}
+
+// TextLayout returns the internal text layout for accessing paragraph data.
+// This is used by the gutter system to render line numbers and other gutter content.
+func (e *TextView) TextLayout() *lt.TextLayout {
+	e.makeValid()
+	return &e.layouter
+}
+
 func (e *TextView) scrollAbs(x, y int) {
 	e.scrollOff.X = x
 	e.scrollOff.Y = y

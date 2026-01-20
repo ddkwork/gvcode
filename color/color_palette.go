@@ -10,6 +10,7 @@ import (
 
 	"gioui.org/op"
 	"gioui.org/op/paint"
+	"github.com/oligo/gvcode/gutter"
 )
 
 // Color encodes a color.NRGBA color which is widely used by Gio.
@@ -145,4 +146,36 @@ func (p *ColorPalette) AddColor(cl Color) int {
 // Clear clear all added colors.
 func (p *ColorPalette) Clear() {
 	p.colors = p.colors[:0]
+}
+
+// GutterColors returns a GutterColors struct based on the palette settings.
+// This is used by the gutter system to get consistent colors.
+func (p *ColorPalette) GutterColors() *gutter.GutterColors {
+	var text, highlight color.NRGBA
+
+	if p.LineNumberColor.IsSet() {
+		highlight = p.LineNumberColor.NRGBA()
+		// Use a slightly dimmed version for non-highlighted lines
+		dimmed := p.LineNumberColor.MulAlpha(0x90)
+		text = dimmed.NRGBA()
+	} else {
+		// Default to foreground color with reduced alpha
+		text = color.NRGBA{A: 0x90}
+		highlight = color.NRGBA{A: 0xFF}
+	}
+
+	var lineHighlight color.NRGBA
+	if p.LineColor.IsSet() {
+		lineHighlight = p.LineColor.NRGBA()
+	} else if p.Foreground.IsSet() {
+		lineHighlight = p.Foreground.MulAlpha(0x30).NRGBA()
+	}
+
+	return &gutter.GutterColors{
+		Text:          text,
+		TextHighlight: highlight,
+		Background:    color.NRGBA{}, // Transparent by default
+		LineHighlight: lineHighlight,
+		Custom:        nil,
+	}
 }

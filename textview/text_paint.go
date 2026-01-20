@@ -198,43 +198,25 @@ func (e *TextView) caretCurrentLine() (start lt.CombinedPos, end lt.CombinedPos,
 	return
 }
 
-// PaintLineNumber paint the line numbers and hightlight current line.
-// It clips and paints the visible line that the caret is in when there
-// is no text selected.
-func (e *TextView) PaintLineNumber(gtx layout.Context, shaper *text.Shaper, textMaterial, highlightTextMaterial op.CallOp, lineColor op.CallOp) layout.Dimensions {
-	// highlight the selected lines.
-	currentLine := -1
-	if e.caret.start == e.caret.end {
-		start, end, lineIndex := e.caretCurrentLine()
-		if start != (lt.CombinedPos{}) || end != (lt.CombinedPos{}) {
-			currentLine = lineIndex
-			bounds := image.Rectangle{
-				Min: image.Point{X: 0, Y: start.Y - start.Ascent.Ceil()},
-				Max: image.Point{X: 1e6, Y: end.Y + end.Descent.Ceil()},
-			}.Sub(image.Point{Y: e.scrollOff.Y}) // fill the whole line.
-
-			area := clip.Rect(e.adjustPadding(bounds)).Push(gtx.Ops)
-			lineColor.Add(gtx.Ops)
-			paint.PaintOp{}.Add(gtx.Ops)
-			area.Pop()
-		}
+// HighlightLine hightlight current line if there is no selection.
+func (e *TextView) HighlightLine(gtx layout.Context, lineColor op.CallOp) {
+	if e.caret.start != e.caret.end {
+		return
 	}
 
-	m := op.Record(gtx.Ops)
-	viewport := image.Rectangle{
-		Min: e.scrollOff,
-		Max: e.viewSize.Add(e.scrollOff),
+	start, end, _ := e.caretCurrentLine()
+	if start != (lt.CombinedPos{}) || end != (lt.CombinedPos{}) {
+		bounds := image.Rectangle{
+			Min: image.Point{X: 0, Y: start.Y - start.Ascent.Ceil()},
+			Max: image.Point{X: 1e6, Y: end.Y + end.Descent.Ceil()},
+		}.Sub(image.Point{Y: e.scrollOff.Y}) // fill the whole line.
+
+		area := clip.Rect(e.adjustPadding(bounds)).Push(gtx.Ops)
+		lineColor.Add(gtx.Ops)
+		paint.PaintOp{}.Add(gtx.Ops)
+		area.Pop()
 	}
 
-	dims := paintLineNumber(gtx, shaper, e.params, viewport, &e.layouter.Paragraphs, currentLine, textMaterial, highlightTextMaterial)
-	call := m.Stop()
-
-	rect := viewport.Sub(e.scrollOff)
-	rect.Max.X = dims.Size.X
-	defer clip.Rect(rect).Push(gtx.Ops).Pop()
-	call.Add(gtx.Ops)
-
-	return dims
 }
 
 // PaintCaret clips and paints the caret rectangle, adding material immediately

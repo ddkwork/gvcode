@@ -21,7 +21,8 @@ import (
 	"github.com/oligo/gvcode"
 	"github.com/oligo/gvcode/addons/completion"
 	gvcolor "github.com/oligo/gvcode/color"
-	"github.com/oligo/gvcode/textstyle/decoration"
+
+	// "github.com/oligo/gvcode/textstyle/decoration"
 	"github.com/oligo/gvcode/textstyle/syntax"
 	wg "github.com/oligo/gvcode/widget"
 )
@@ -91,8 +92,8 @@ func (ed *EditorApp) layout(gtx C, th *material.Theme) D {
 		layout.Flexed(1, func(gtx C) D {
 			return layout.Inset{
 				Top:   unit.Dp(2),
-				Left:  unit.Dp(6),
-				Right: unit.Dp(6),
+				Left:  unit.Dp(1),
+				Right: unit.Dp(1),
 			}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{
 					Axis: layout.Horizontal,
@@ -196,29 +197,30 @@ func main() {
 	colorScheme.AddStyle("keyword", syntax.Underline, keywordColor, gvcolor.Color{})
 
 	editorApp.state.WithOptions(
-		gvcode.WrapLine(false),
-		gvcode.WithLineNumber(true),
+		gvcode.WrapLine(true),
 		gvcode.WithAutoCompletion(cm),
 		gvcode.WithColorScheme(colorScheme),
 		gvcode.WithCornerRadius(unit.Dp(4)),
 	)
+	editorApp.state.WithOptions(gvcode.WithDefaultGutters(), gvcode.WithGutterGap(unit.Dp(12)))
+
 
 	tokens := HightlightTextByPattern(editorApp.state.Text(), syntaxPattern)
 	editorApp.state.SetSyntaxTokens(tokens...)
 
-	highlightColor, _ := gvcolor.Hex2Color("#e74c3c50")
-	highlightColor2, _ := gvcolor.Hex2Color("#f1c40f50")
-	highlightColor3, _ := gvcolor.Hex2Color("#e74c3c")
+	// highlightColor, _ := gvcolor.Hex2Color("#e74c3c50")
+	// highlightColor2, _ := gvcolor.Hex2Color("#f1c40f50")
+	// highlightColor3, _ := gvcolor.Hex2Color("#e74c3c")
 
-	err := editorApp.state.AddDecorations(
-		decoration.Decoration{Source: "test", Start: 5, End: 150, Background: &decoration.Background{Color: highlightColor}},
-		decoration.Decoration{Source: "test", Start: 100, End: 200, Background: &decoration.Background{Color: highlightColor2}},
-		decoration.Decoration{Source: "test", Start: 100, End: 200, Squiggle: &decoration.Squiggle{Color: highlightColor3}},
-		decoration.Decoration{Source: "test", Start: 250, End: 400, Strikethrough: &decoration.Strikethrough{Color: highlightColor3}},
-	)
-	if err != nil {
-		panic(err)
-	}
+	// err := editorApp.state.AddDecorations(
+	// 	decoration.Decoration{Source: "test", Start: 5, End: 150, Background: &decoration.Background{Color: highlightColor}},
+	// 	decoration.Decoration{Source: "test", Start: 100, End: 200, Background: &decoration.Background{Color: highlightColor2}},
+	// 	decoration.Decoration{Source: "test", Start: 100, End: 200, Squiggle: &decoration.Squiggle{Color: highlightColor3}},
+	// 	decoration.Decoration{Source: "test", Start: 250, End: 400, Strikethrough: &decoration.Strikethrough{Color: highlightColor3}},
+	// )
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	go func() {
 		err := editorApp.run()
