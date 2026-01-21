@@ -198,27 +198,6 @@ func (e *TextView) caretCurrentLine() (start lt.CombinedPos, end lt.CombinedPos,
 	return
 }
 
-// HighlightLine hightlight current line if there is no selection.
-func (e *TextView) HighlightLine(gtx layout.Context, lineColor op.CallOp) {
-	if e.caret.start != e.caret.end {
-		return
-	}
-
-	start, end, _ := e.caretCurrentLine()
-	if start != (lt.CombinedPos{}) || end != (lt.CombinedPos{}) {
-		bounds := image.Rectangle{
-			Min: image.Point{X: 0, Y: start.Y - start.Ascent.Ceil()},
-			Max: image.Point{X: 1e6, Y: end.Y + end.Descent.Ceil()},
-		}.Sub(image.Point{Y: e.scrollOff.Y}) // fill the whole line.
-
-		area := clip.Rect(e.adjustPadding(bounds)).Push(gtx.Ops)
-		lineColor.Add(gtx.Ops)
-		paint.PaintOp{}.Add(gtx.Ops)
-		area.Pop()
-	}
-
-}
-
 // PaintCaret clips and paints the caret rectangle, adding material immediately
 // before painting to set the appropriate paint material.
 func (e *TextView) PaintCaret(gtx layout.Context, material op.CallOp) {

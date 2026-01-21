@@ -2,7 +2,6 @@ package providers
 
 import (
 	"image"
-	"image/color"
 	"strconv"
 
 	"gioui.org/f32"
@@ -12,6 +11,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
+	gvcolor "github.com/oligo/gvcode/color"
 	"github.com/oligo/gvcode/gutter"
 	"golang.org/x/image/math/fixed"
 )
@@ -35,6 +35,15 @@ type LineNumberProvider struct {
 
 	// cachedLines stores the line count used to calculate cachedWidth.
 	cachedLines int
+
+	// currentLine caches the current line from the last Layout call for HighlightedLines.
+	currentLine int
+
+	// lineHighlightColor caches the highlight color from the last Layout call.
+	lineHighlightColor gvcolor.Color
+
+	// hasCurrentLine indicates whether there is a valid current line to highlight.
+	hasCurrentLine bool
 }
 
 // NewLineNumberProvider creates a new line number provider with default settings.
@@ -111,6 +120,13 @@ func (p *LineNumberProvider) getMaxLineNumWidth(shaper *text.Shaper, params text
 
 // Layout renders the line numbers for visible paragraphs.
 func (p *LineNumberProvider) Layout(gtx layout.Context, ctx gutter.GutterContext) layout.Dimensions {
+	// Cache current line info for HighlightedLines
+	p.hasCurrentLine = ctx.CurrentLine >= 0
+	p.currentLine = ctx.CurrentLine
+	if ctx.Colors != nil {
+		p.lineHighlightColor = ctx.Colors.LineHighlight
+	}
+
 	if len(ctx.Paragraphs) == 0 {
 		return layout.Dimensions{}
 	}
@@ -203,8 +219,23 @@ func (p *LineNumberProvider) Layout(gtx layout.Context, ctx gutter.GutterContext
 }
 
 // createColorOp creates a paint operation for the given color.
-func (p *LineNumberProvider) createColorOp(ops *op.Ops, c color.NRGBA) op.CallOp {
+func (p *LineNumberProvider) createColorOp(ops *op.Ops, c gvcolor.Color) op.CallOp {
 	m := op.Record(ops)
-	paint.ColorOp{Color: c}.Add(ops)
+	paint.ColorOp{Color: c.NRGBA()}.Add(ops)
 	return m.Stop()
+}
+
+// HighlightedLines returns the current line to be highlighted.
+// This implements the gutter.LineHighlighter interface.
+func (p *LineNumberProvider) HighlightedLines() []gutter.LineHighlight {
+	if !p.hasCurrentLine || !p.lineHighlightColor.IsSet() {
+		return nil
+	}
+
+	return []gutter.LineHighlight{
+		{
+			Line:  p.currentLine,
+			Color: p.lineHighlightColor,
+		},
+	}
 }

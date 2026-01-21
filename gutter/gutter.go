@@ -2,11 +2,11 @@ package gutter
 
 import (
 	"image"
-	"image/color"
 
 	"gioui.org/layout"
 	"gioui.org/text"
 	"gioui.org/unit"
+	gvcolor "github.com/oligo/gvcode/color"
 	"golang.org/x/image/math/fixed"
 )
 
@@ -84,17 +84,35 @@ type Paragraph struct {
 // GutterColors defines the color scheme for gutter rendering.
 type GutterColors struct {
 	// Text is the default text color for gutter content.
-	Text color.NRGBA
+	Text gvcolor.Color
 
 	// TextHighlight is the text color for highlighted content (e.g., current line number).
-	TextHighlight color.NRGBA
+	TextHighlight gvcolor.Color
 
 	// Background is the background color for the gutter area.
-	Background color.NRGBA
+	Background gvcolor.Color
 
 	// LineHighlight is the color used to highlight the current line background.
-	LineHighlight color.NRGBA
+	LineHighlight gvcolor.Color
 
 	// Custom contains provider-specific colors, keyed by provider ID or custom name.
-	Custom map[string]color.NRGBA
+	Custom map[string]gvcolor.Color
+}
+
+// LineHighlighter is an optional interface that GutterProviders can implement
+// to specify lines that should be highlighted with a background color.
+// The Editor will paint these highlights spanning the full editor width.
+type LineHighlighter interface {
+	// HighlightedLines returns the lines that should be highlighted.
+	// This is called after Layout to collect highlights from all providers.
+	HighlightedLines() []LineHighlight
+}
+
+// LineHighlight specifies a line to be highlighted with a background color.
+type LineHighlight struct {
+	// Line is the 0-based line index to highlight.
+	Line int
+
+	// Color is the background color for the highlight.
+	Color gvcolor.Color
 }

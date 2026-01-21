@@ -102,6 +102,19 @@ func (m *Manager) Providers() []GutterProvider {
 	return m.providers
 }
 
+// CollectHighlights gathers line highlights from all providers that implement
+// the LineHighlighter interface. The returned highlights should be painted
+// as full-width backgrounds by the Editor.
+func (m *Manager) CollectHighlights() []LineHighlight {
+	var highlights []LineHighlight
+	for _, p := range m.providers {
+		if highlighter, ok := p.(LineHighlighter); ok {
+			highlights = append(highlights, highlighter.HighlightedLines()...)
+		}
+	}
+	return highlights
+}
+
 // TotalWidth returns the total width of all gutter columns including gaps.
 func (m *Manager) TotalWidth() int {
 	return m.totalWidth
@@ -292,8 +305,8 @@ func (m *Manager) Layout(gtx layout.Context, ctx GutterContext) layout.Dimension
 	stack := area.Push(gtx.Ops)
 
 	// Paint background if specified
-	if ctx.Colors != nil && ctx.Colors.Background.A > 0 {
-		paint.ColorOp{Color: ctx.Colors.Background}.Add(gtx.Ops)
+	if ctx.Colors != nil && ctx.Colors.Background.IsSet() {
+		paint.ColorOp{Color: ctx.Colors.Background.NRGBA()}.Add(gtx.Ops)
 		paint.PaintOp{}.Add(gtx.Ops)
 	}
 
