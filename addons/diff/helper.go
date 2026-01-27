@@ -13,8 +13,15 @@ import (
 	"github.com/oligo/gvcode/gutter/providers"
 )
 
-// ParseGitDiff runs git diff on the given file and parses the output into DiffHunks.
-func ParseGitDiff(filePath string) []*providers.DiffHunk {
+// GitDiff is a helper that can be used to parse git diff output.
+// Use the NewGitDiff function to build a new instance to make sure
+// we are dealing with a real git repository.
+type GitDiff struct {
+	dir      string
+	filename string
+}
+
+func NewGitDiff(filePath string) *GitDiff {
 	if _, err := exec.LookPath("git"); err != nil {
 		return nil
 	}
@@ -26,11 +33,32 @@ func ParseGitDiff(filePath string) []*providers.DiffHunk {
 		return nil
 	}
 	dir := filepath.Dir(absPath)
-	fileName := filepath.Base(absPath)
+	filename := filepath.Base(absPath)
 
 	// Run git diff
-	cmd := exec.Command("git", "diff", "--no-color", "-U0", "--", fileName)
+	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
 	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil || strings.TrimSpace(string(output)) != "true" {
+		return nil
+	}
+
+	return &GitDiff{
+		dir:      dir,
+		filename: filename,
+	}
+
+}
+
+// ParseGitDiff runs git diff on the given file and parses the output into DiffHunks.
+func (d *GitDiff) ParseDiff() []*providers.DiffHunk {
+	if d == nil {
+		return nil
+	}
+
+	// Run git diff
+	cmd := exec.Command("git", "diff", "--no-color", "-U0", "--", d.filename)
+	cmd.Dir = d.dir
 	output, err := cmd.Output()
 	if err != nil {
 		// git diff returns exit code 1 if there are changes, which is not an error
@@ -48,6 +76,31 @@ func ParseGitDiff(filePath string) []*providers.DiffHunk {
 	return parseDiffOutput(output)
 }
 
+var (
+	// Regex to match hunk headers like @@ -10,3 +10,5 @@
+	hunkHeaderRe = regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
+)
+
+// finalizeHunkType determines the hunk type based on the actual content
+func finalizeHunkType(hunk *providers.DiffHunk) {
+	if hunk == nil {
+		return
+	}
+
+	hasOldLines := len(hunk.OldLines) > 0
+	hasNewLines := len(hunk.NewLines) > 0
+
+	if !hasOldLines && hasNewLines {
+		hunk.Type = providers.DiffAdded
+	} else if hasOldLines && !hasNewLines {
+		hunk.Type = providers.DiffDeleted
+		// For deleted hunks, the line number is where the deletion occurred
+		hunk.EndLine = hunk.StartLine
+	} else if hasOldLines && hasNewLines {
+		hunk.Type = providers.DiffModified
+	}
+}
+
 // parseDiffOutput parses unified diff output into DiffHunks.
 func parseDiffOutput(output []byte) []*providers.DiffHunk {
 	var hunks []*providers.DiffHunk
@@ -56,9 +109,6 @@ func parseDiffOutput(output []byte) []*providers.DiffHunk {
 	var currentHunk *providers.DiffHunk
 	var inHunk bool
 
-	// Regex to match hunk headers like @@ -10,3 +10,5 @@
-	hunkHeaderRe := regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
-
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -66,14 +116,10 @@ func parseDiffOutput(output []byte) []*providers.DiffHunk {
 		if matches := hunkHeaderRe.FindStringSubmatch(line); matches != nil {
 			// Save previous hunk if exists
 			if currentHunk != nil {
+				finalizeHunkType(currentHunk)
 				hunks = append(hunks, currentHunk)
 			}
 
-			oldStart, _ := strconv.Atoi(matches[1])
-			oldCount := 1
-			if matches[2] != "" {
-				oldCount, _ = strconv.Atoi(matches[2])
-			}
 			newStart, _ := strconv.Atoi(matches[3])
 			newCount := 1
 			if matches[4] != "" {
@@ -81,31 +127,15 @@ func parseDiffOutput(output []byte) []*providers.DiffHunk {
 			}
 
 			// Convert to 0-based line numbers
-			oldStart--
 			newStart--
 
-			// Determine hunk type
-			var diffType providers.DiffType
-			if oldCount == 0 {
-				diffType = providers.DiffAdded
-			} else if newCount == 0 {
-				diffType = providers.DiffDeleted
-			} else {
-				diffType = providers.DiffModified
-			}
-
+			// Create hunk with temporary type - will be determined after parsing content
 			currentHunk = &providers.DiffHunk{
-				Type:      diffType,
+				Type:      providers.DiffModified, // Temporary, will be updated
 				StartLine: newStart,
 				EndLine:   newStart + max(newCount-1, 0),
 				OldLines:  make([]string, 0),
 				NewLines:  make([]string, 0),
-			}
-
-			// For deleted hunks, the line number is where the deletion occurred
-			if diffType == providers.DiffDeleted {
-				currentHunk.StartLine = newStart
-				currentHunk.EndLine = newStart
 			}
 
 			inHunk = true
@@ -132,6 +162,7 @@ func parseDiffOutput(output []byte) []*providers.DiffHunk {
 
 	// Don't forget the last hunk
 	if currentHunk != nil {
+		finalizeHunkType(currentHunk)
 		hunks = append(hunks, currentHunk)
 	}
 
