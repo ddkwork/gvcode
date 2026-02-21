@@ -17,6 +17,4 @@ func BenchmarkLayout(b *testing.B) {
 	for range b.N {
 		layouter.Layout(shaper, &text.Parameters{PxPerEm: 14}, 4, true)
 	}
-
 }
-

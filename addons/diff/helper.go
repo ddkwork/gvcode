@@ -47,7 +47,6 @@ func NewGitDiff(filePath string) *GitDiff {
 		dir:      dir,
 		filename: filename,
 	}
-
 }
 
 // ParseGitDiff runs git diff on the given file and parses the output into DiffHunks.
@@ -76,10 +75,8 @@ func (d *GitDiff) ParseDiff() []*providers.DiffHunk {
 	return parseDiffOutput(output)
 }
 
-var (
-	// Regex to match hunk headers like @@ -10,3 +10,5 @@
-	hunkHeaderRe = regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
-)
+// Regex to match hunk headers like @@ -10,3 +10,5 @@
+var hunkHeaderRe = regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
 
 // finalizeHunkType determines the hunk type based on the actual content
 func finalizeHunkType(hunk *providers.DiffHunk) {

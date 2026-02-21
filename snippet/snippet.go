@@ -11,9 +11,7 @@ import (
 	"unicode/utf8"
 )
 
-var (
-	snippetPattern = regexp.MustCompile(`\$((\d+)|(\w+))|\$\{([^}]+)\}`)
-)
+var snippetPattern = regexp.MustCompile(`\$((\d+)|(\w+))|\$\{([^}]+)\}`)
 
 type bytesOff struct {
 	start int

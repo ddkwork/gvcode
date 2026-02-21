@@ -87,5 +87,4 @@ func TestLineSplit(t *testing.T) {
 			}
 		})
 	}
-
 }

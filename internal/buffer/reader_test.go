@@ -67,5 +67,4 @@ func TestReadRuneAt(t *testing.T) {
 	if r != '你' {
 		t.Fail()
 	}
-
 }

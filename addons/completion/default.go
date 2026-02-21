@@ -112,7 +112,6 @@ func (dc *DefaultCompletion) OnText(ctx gvcode.CompletionContext) {
 
 		dc.updateCandidates(dc.session.Update(ctx))
 	}
-
 }
 
 func (dc *DefaultCompletion) updateCandidates(candidates []gvcode.CompletionCandidate) {

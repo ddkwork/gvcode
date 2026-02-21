@@ -16,7 +16,8 @@ import (
 
 func paintLineNumber(gtx layout.Context, shaper *text.Shaper, params text.Parameters,
 	viewport image.Rectangle, paragraphs *[]lt.Paragraph, currentPara int,
-	textMaterial, highlightTextMaterial op.CallOp) layout.Dimensions {
+	textMaterial, highlightTextMaterial op.CallOp,
+) layout.Dimensions {
 	// inherit all other settings from the main text layout.
 	params.Alignment = text.End
 	params.MinWidth = 0

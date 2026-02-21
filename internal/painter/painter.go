@@ -44,7 +44,8 @@ func (tp *TextPainter) SetLineHeight(lineHeight fixed.Int26_6) {
 
 // Paint paints text and various styles originated from syntax hignlighting or decorations.
 func (tp *TextPainter) Paint(gtx layout.Context, shaper *text.Shaper, lines []lt.Line, defaultColor op.CallOp,
-	syntaxTokens LineSplitter, decorations LineSplitter) {
+	syntaxTokens LineSplitter, decorations LineSplitter,
+) {
 	m := op.Record(gtx.Ops)
 	viewport := tp.viewport
 
@@ -80,7 +81,8 @@ func (tp *TextPainter) Paint(gtx layout.Context, shaper *text.Shaper, lines []lt
 }
 
 func (tp *TextPainter) paintText(gtx layout.Context, shaper *text.Shaper, lineOff f32.Point, line lt.Line,
-	defaultMaterial op.CallOp, syntaxTokens LineSplitter) {
+	defaultMaterial op.CallOp, syntaxTokens LineSplitter,
+) {
 	// split the line into runs.
 	if !isNil(syntaxTokens) {
 		syntaxTokens.Split(line, &tp.runBuffer)
@@ -96,7 +98,8 @@ func (tp *TextPainter) paintText(gtx layout.Context, shaper *text.Shaper, lineOf
 }
 
 func (tp *TextPainter) paintDecorations(gtx layout.Context, shaper *text.Shaper, lineOff f32.Point, line lt.Line,
-	defaultMaterial op.CallOp, decorations LineSplitter) {
+	defaultMaterial op.CallOp, decorations LineSplitter,
+) {
 	if isNil(decorations) {
 		return
 	}
@@ -105,7 +108,8 @@ func (tp *TextPainter) paintDecorations(gtx layout.Context, shaper *text.Shaper,
 }
 
 func (tp *TextPainter) paintLine(gtx layout.Context, shaper *text.Shaper, lineOffset f32.Point, runs []RenderRun,
-	defaultMaterial op.CallOp, noText bool) {
+	defaultMaterial op.CallOp, noText bool,
+) {
 	// Let drawing begin at the offset of the entire line.
 	defer op.Affine(f32.Affine2D{}.Offset(lineOffset)).Push(gtx.Ops).Pop()
 
@@ -144,7 +148,6 @@ func (tp *TextPainter) paintLine(gtx layout.Context, shaper *text.Shaper, lineOf
 
 		spanOffset.Pop()
 	}
-
 }
 
 func (tp *TextPainter) drawText(gtx layout.Context, shaper *text.Shaper, run *RenderRun, defaultMaterial op.CallOp) {
@@ -278,7 +281,7 @@ func (tp *TextPainter) drawSquiggle(gtx layout.Context, run *RenderRun, material
 		currentAmplitude *= -1
 	}
 
-	//path.Close()
+	// path.Close()
 	if run.Squiggle.Color != (op.CallOp{}) {
 		material = run.Squiggle.Color
 	}

@@ -55,7 +55,6 @@ func TestAppendReplace(t *testing.T) {
 		t.Logf("expected length: %d, actual: %d", 2, pt.pieces.Length())
 		t.Fail()
 	}
-
 }
 
 func TestUndo(t *testing.T) {
@@ -115,7 +114,6 @@ func TestUndo(t *testing.T) {
 	if expected != "" {
 		t.Fail()
 	}
-
 }
 
 func TestUndoRedo(t *testing.T) {
@@ -127,9 +125,9 @@ func TestUndoRedo(t *testing.T) {
 		t.Fail()
 	}
 
-	//runeLen, bytes :=  pt.undoStack.ranges[0].Length()
+	// runeLen, bytes :=  pt.undoStack.ranges[0].Length()
 
-	//t.Logf("undostack range length: %d, %d", runeLen, bytes)
+	// t.Logf("undostack range length: %d, %d", runeLen, bytes)
 
 	if pt.redoStack.depth() != 0 {
 		t.Fail()
@@ -160,7 +158,6 @@ func TestUndoRedo(t *testing.T) {
 	if pt.redoStack.depth() > 0 {
 		t.Fail()
 	}
-
 }
 
 func TestErase(t *testing.T) {
@@ -249,7 +246,6 @@ func TestErase(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGroupOp(t *testing.T) {
@@ -358,7 +354,6 @@ func TestMarkerOnInsert(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestMarkerOnErase(t *testing.T) {

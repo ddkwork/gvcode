@@ -123,7 +123,6 @@ func (sc *snippetContext) OnInsertAt(runeStart, runeEnd int) {
 	if runeStart < start || runeEnd > end+1 {
 		sc.editor.setMode(ModeNormal)
 	}
-
 }
 
 func (sc *snippetContext) getTabStopPosition(idx int) (int, int) {

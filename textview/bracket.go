@@ -262,7 +262,7 @@ func (e *TextView) NearestMatchingBrackets() (left int, right int) {
 					}
 				} else {
 					// Found a un-balanced bracket, drop it.
-					//e.idx.push(next, offset)
+					// e.idx.push(next, offset)
 				}
 			}
 

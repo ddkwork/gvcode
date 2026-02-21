@@ -39,7 +39,6 @@ func TestLineIndexInsert(t *testing.T) {
 		t.Log(idx.lines)
 		t.Fail()
 	}
-
 }
 
 func TestLineIndexDelete(t *testing.T) {
@@ -65,5 +64,4 @@ func TestLineIndexDelete(t *testing.T) {
 		t.Log(idx.lines)
 		t.Fail()
 	}
-
 }

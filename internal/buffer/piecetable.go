@@ -9,8 +9,10 @@ import (
 	"unicode/utf8"
 )
 
-type bufSrc uint8
-type action uint8
+type (
+	bufSrc uint8
+	action uint8
+)
 
 const (
 	original bufSrc = iota
@@ -592,8 +594,8 @@ func (pt *PieceTable) ReadAt(p []byte, offset int64) (total int, err error) {
 		return 0, io.EOF
 	}
 
-	var expected = len(p)
-	var bytesOff = bytesOffInPiece
+	expected := len(p)
+	bytesOff := bytesOffInPiece
 
 	for n := first; n != pt.pieces.tail; n = n.next {
 		readSize := min(n.byteLength-bytesOff, expected-total)
@@ -661,7 +663,6 @@ func (pt *PieceTable) updateMarkersOnSplit(oldPiece *piece, splitOffset int, lef
 			}
 		}
 	}
-
 }
 
 func (pt *PieceTable) updateMarkersOnErase(oldPieces *pieceRange, newPieces *pieceRange) {
@@ -770,7 +771,6 @@ func (pt *PieceTable) updateMarkersOnErase(oldPieces *pieceRange, newPieces *pie
 				} else {
 					marker.update(tail, 0)
 				}
-
 			}
 		}
 	}

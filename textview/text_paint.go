@@ -27,7 +27,7 @@ func (e *TextView) calculateViewSize(gtx layout.Context) image.Point {
 }
 
 func (e *TextView) layoutText(shaper *text.Shaper) {
-	//e.layoutByParagraph(shaper, &it)
+	// e.layoutByParagraph(shaper, &it)
 	e.dims = e.layouter.Layout(shaper, &e.params, e.TabWidth, e.WrapLine)
 }
 
@@ -82,7 +82,7 @@ func (e *TextView) PaintSelection(gtx layout.Context, material op.CallOp) {
 	docViewport := image.Rectangle{Max: e.viewSize}.Add(e.scrollOff)
 	defer clip.Rect(localViewport).Push(gtx.Ops).Pop()
 	e.regions = e.layouter.Locate(docViewport, e.caret.start, e.caret.end, e.regions)
-	//log.Println("regions count: ", len(e.regions), e.regions)
+	// log.Println("regions count: ", len(e.regions), e.regions)
 	if len(e.regions) == 0 {
 		return
 	}

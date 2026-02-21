@@ -103,7 +103,6 @@ func (b *breaker) markCommitted() {
 			b.wordBreak = b.committed
 		}
 	}
-
 }
 
 // glyphReader is a buffered glyph reader to read from the shaped glyphs.
@@ -322,7 +321,7 @@ func (w *lineWrapper) readToNextBreak(breakAtIdx breakOption, paragraph []rune) 
 		advance := advanceOfGlyphs(w.glyphs)
 
 		if gl.Flags&text.FlagClusterBreak != 0 {
-			//log.Println("rune: ", string(paragraph[w.glyphBuf.offset-1]), gl.Flags&text.FlagParagraphStart != 0)
+			// log.Println("rune: ", string(paragraph[w.glyphBuf.offset-1]), gl.Flags&text.FlagParagraphStart != 0)
 			isTab := paragraph[w.glyphBuf.offset-1] == '\t'
 			if isTab {
 				// the rune is a tab, expand it before line wrapping.

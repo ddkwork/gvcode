@@ -274,7 +274,7 @@ func (d *DecorationTree) Refresh() {
 		deco := all[i]
 		start, end := deco.Range()
 		if start.Offset() != deco.Start || end.Offset() != deco.End {
-			//log.Printf("old: %d-%d, new: %d-%d", deco.Start, deco.End, start.Offset(), end.Offset())
+			// log.Printf("old: %d-%d, new: %d-%d", deco.Start, deco.End, start.Offset(), end.Offset())
 			invalid = true
 			all[i].Start = start.Offset()
 			all[i].End = end.Offset()

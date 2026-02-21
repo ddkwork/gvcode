@@ -72,7 +72,7 @@ func (h *Hover) Update(gtx layout.Context) (HoverEvent, bool) {
 		case pointer.Leave, pointer.Cancel:
 			if h.entered && h.pid == e.PointerID {
 				h.entered = false
-				//h.enteredAt = 0
+				// h.enteredAt = 0
 				h.isHovering = false
 				h.startPos = f32.Point{}
 			}

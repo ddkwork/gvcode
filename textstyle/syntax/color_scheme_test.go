@@ -8,7 +8,6 @@ import (
 )
 
 func TestScopeIsValid(t *testing.T) {
-
 	cases := []struct {
 		value    string
 		expected bool
@@ -51,7 +50,6 @@ func TestScopeIsValid(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGetTokenStyle(t *testing.T) {

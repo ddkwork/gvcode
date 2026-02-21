@@ -133,7 +133,7 @@ func (s *Scroll) Update(cfg unit.Metric, q input.Source, t time.Time, scrollx, s
 			fallthrough
 		case pointer.Cancel:
 			s.dragging = false
-			//s.axisLocked = false
+			// s.axisLocked = false
 		case pointer.Scroll:
 			if e.Modifiers.Contain(key.ModShift) {
 				s.scrollAxis = Horizontal

@@ -45,7 +45,6 @@ const (
 )
 
 func (ed *EditorApp) run() error {
-
 	var ops op.Ops
 	for {
 		e := ed.window.Event()
@@ -100,7 +99,7 @@ func (ed *EditorApp) layout(gtx C, th *material.Theme) D {
 				}.Layout(gtx,
 					layout.Flexed(1.0, func(gtx layout.Context) layout.Dimensions {
 						ed.state.WithOptions(
-							//gvcode.WithFont(font.Font{Typeface: "monospace", Weight: font.SemiBold}),
+							// gvcode.WithFont(font.Font{Typeface: "monospace", Weight: font.SemiBold}),
 							gvcode.WithTextSize(unit.Sp(12)),
 							gvcode.WithLineHeight(0, 1.5),
 						)
@@ -131,7 +130,6 @@ func (ed *EditorApp) layout(gtx C, th *material.Theme) D {
 						return bar.Layout(gtx, layout.Vertical, minY, maxY)
 					}),
 				)
-
 			})
 		}),
 		layout.Rigid(func(gtx C) D {
@@ -148,7 +146,6 @@ func (ed *EditorApp) layout(gtx C, th *material.Theme) D {
 			})
 		}),
 	)
-
 }
 
 func makeScrollbar(th *material.Theme, scroll *widget.Scrollbar, color color.NRGBA) material.ScrollbarStyle {
@@ -204,7 +201,6 @@ func main() {
 	)
 	editorApp.state.WithOptions(gvcode.WithDefaultGutters(), gvcode.WithGutterGap(unit.Dp(12)))
 
-
 	tokens := HightlightTextByPattern(editorApp.state.Text(), syntaxPattern)
 	editorApp.state.SetSyntaxTokens(tokens...)
 
@@ -232,7 +228,6 @@ func main() {
 	}()
 
 	app.Main()
-
 }
 
 func HightlightTextByPattern(text string, pattern string) []syntax.Token {
