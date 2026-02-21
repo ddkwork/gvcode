@@ -13,6 +13,7 @@ import (
 	"gioui.org/text"
 	"github.com/go-text/typesetting/segmenter"
 	"github.com/oligo/gvcode/internal/buffer"
+	"github.com/oligo/gvcode/internal/folding"
 	"golang.org/x/image/math/fixed"
 )
 
@@ -37,6 +38,11 @@ type TextLayout struct {
 	bounds image.Rectangle
 	// baseline tracks the location of the first line's baseline.
 	baseline int
+
+	// foldManager manages code folding regions.
+	foldManager *folding.Manager
+	// visibleParagraphs maps visible paragraph indices to actual paragraph indices.
+	visibleParagraphs []int
 }
 
 func NewTextLayout(src buffer.TextSource) TextLayout {
@@ -44,6 +50,11 @@ func NewTextLayout(src buffer.TextSource) TextLayout {
 		src:    src,
 		reader: bufio.NewReader(buffer.NewReader(src)),
 	}
+}
+
+// SetFoldManager sets the folding manager for this layout.
+func (tl *TextLayout) SetFoldManager(fm *folding.Manager) {
+	tl.foldManager = fm
 }
 
 // Calculate line height. Maybe there's a better way?
@@ -243,17 +254,25 @@ func (tl *TextLayout) trackLines(lines []Line) {
 	}
 
 	rng := Paragraph{}
+	paraIdx := 0
 	for _, l := range lines {
 		hasBreak := rng.Add(l)
 
 		if hasBreak {
-			tl.Paragraphs = append(tl.Paragraphs, rng)
+			// Check if this paragraph should be visible (not folded)
+			if tl.foldManager == nil || tl.foldManager.IsLineVisible(paraIdx) {
+				tl.Paragraphs = append(tl.Paragraphs, rng)
+			}
+			paraIdx++
 			rng = Paragraph{}
 		}
 	}
 
 	if rng != (Paragraph{}) {
-		tl.Paragraphs = append(tl.Paragraphs, rng)
+		// Check if this paragraph should be visible (not folded)
+		if tl.foldManager == nil || tl.foldManager.IsLineVisible(paraIdx) {
+			tl.Paragraphs = append(tl.Paragraphs, rng)
+		}
 	}
 }
 

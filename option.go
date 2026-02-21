@@ -218,3 +218,16 @@ func WithRunButtons() EditorOption {
 		e.gutterManager.Register(providers.NewRunButtonProvider())
 	}
 }
+
+// WithStickyLines enables sticky lines functionality.
+// Sticky lines keep important code structure (functions, types, etc.) visible at the top of the editor while scrolling.
+func WithStickyLines() EditorOption {
+	return func(e *Editor) {
+		e.initBuffer()
+		if e.gutterManager == nil {
+			e.gutterManager = gutter.NewManager()
+		}
+		// Register sticky lines provider (it will be used internally by editor)
+		e.gutterManager.Register(providers.NewStickyLinesProvider())
+	}
+}

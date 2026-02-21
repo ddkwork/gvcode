@@ -156,6 +156,13 @@ func (e *Editor) initBuffer() {
 	e.selectionHighlighter.editor = e
 }
 
+// Invalidate forces a re-layout of the editor content on the next frame.
+// This is useful when external changes (like folding) affect the layout.
+func (e *Editor) Invalidate() {
+	e.initBuffer()
+	e.text.Invalidate()
+}
+
 // Update the state of the editor in response to input events. Update consumes editor
 // input events until there are no remaining events or an editor event is generated.
 // To fully update the state of the editor, callers should call Update until it returns

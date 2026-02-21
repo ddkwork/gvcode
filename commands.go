@@ -323,6 +323,21 @@ func (e *Editor) buildBuiltinCommands() {
 			return nil
 		})
 
+	registerCommand(key.Filter{Focus: e, Name: key.NameDownArrow, Optional: key.ModShortcutAlt | key.ModShift},
+		func(gtx layout.Context, evt key.Event) EditorEvent {
+			_, atEnd := checkPos(gtx)
+			if atEnd {
+				return nil
+			}
+
+			selAct := textview.SelectionClear
+			if evt.Modifiers.Contain(key.ModShift) {
+				selAct = textview.SelectionExtend
+			}
+			e.text.MoveLines(+1, selAct)
+			return nil
+		})
+
 	// ESC key exits column editing mode
 	registerCommand(key.Filter{Focus: e, Name: key.NameEscape},
 		func(gtx layout.Context, evt key.Event) EditorEvent {
@@ -352,21 +367,6 @@ func (e *Editor) buildBuiltinCommands() {
 			} else {
 				println("[ColumnEdit] Cannot enable column edit in ReadOnly mode")
 			}
-			return nil
-		})
-
-	registerCommand(key.Filter{Focus: e, Name: key.NameDownArrow, Optional: key.ModShortcutAlt | key.ModShift},
-		func(gtx layout.Context, evt key.Event) EditorEvent {
-			_, atEnd := checkPos(gtx)
-			if atEnd {
-				return nil
-			}
-
-			selAct := textview.SelectionClear
-			if evt.Modifiers.Contain(key.ModShift) {
-				selAct = textview.SelectionExtend
-			}
-			e.text.MoveLines(+1, selAct)
 			return nil
 		})
 }

@@ -90,7 +90,7 @@ func main() {
 		gvcode.WithColorScheme(colorScheme),
 		gvcode.WithCornerRadius(unit.Dp(4)),
 	)
-	editorApp.state.WithOptions(gvcode.WithDefaultGutters(), gvcode.WithRunButtons(), gvcode.WithGutterGap(unit.Dp(12)))
+	editorApp.state.WithOptions(gvcode.WithDefaultGutters(), gvcode.WithRunButtons(), gvcode.WithStickyLines(), gvcode.WithGutterGap(unit.Dp(12)))
 
 	tokens := HightlightTextByPattern(editorApp.state.Text(), syntaxPattern)
 	editorApp.state.SetSyntaxTokens(tokens...)
