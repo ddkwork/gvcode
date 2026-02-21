@@ -85,12 +85,17 @@ func main() {
 	colorScheme.AddStyle("keyword", syntax.Underline, keywordColor, gvcolor.Color{})
 
 	editorApp.state.WithOptions(
-		gvcode.WrapLine(true),
-		gvcode.WithAutoCompletion(cm),
-		gvcode.WithColorScheme(colorScheme),
-		gvcode.WithCornerRadius(unit.Dp(4)),
+		gvcode.WrapLine(true),               // 自动换行
+		gvcode.WithAutoCompletion(cm),       // 自动补全
+		gvcode.WithColorScheme(colorScheme), // 颜色方案
+		gvcode.WithCornerRadius(unit.Dp(4)), // 圆角
+		gvcode.WithGutterGap(unit.Dp(12)),   // Gutter间距
+		gvcode.WithDefaultGutters(),         // 行号
+		gvcode.WithRunButtons(),             // 运行按钮
+		gvcode.WithStickyLines(),            // 粘性行
+		gvcode.WithCodeFolding(),            // 代码折叠
+		gvcode.WithColumnEdit(),             // 列编辑模式
 	)
-	editorApp.state.WithOptions(gvcode.WithDefaultGutters(), gvcode.WithRunButtons(), gvcode.WithStickyLines(), gvcode.WithGutterGap(unit.Dp(12)))
 
 	tokens := HightlightTextByPattern(editorApp.state.Text(), syntaxPattern)
 	editorApp.state.SetSyntaxTokens(tokens...)

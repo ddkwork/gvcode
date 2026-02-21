@@ -145,7 +145,14 @@ func (e *Editor) processPointerEvent(gtx layout.Context, ev event.Event) (Editor
 				e.scrollCaret = true
 			}
 
-			if evt.Modifiers == key.ModShift {
+			// Alt+mouse drag for column selection
+			if evt.Modifiers.Contain(key.ModAlt) {
+				e.SetColumnEditMode(true)
+				e.startColumnSelection(image.Point{
+					X: int(math.Round(float64(evt.Position.X))),
+					Y: int(math.Round(float64(evt.Position.Y))),
+				})
+			} else if evt.Modifiers == key.ModShift {
 				start, end := e.text.Selection()
 				// If they clicked closer to the end, then change the end to
 				// where the caret used to be (effectively swapping start & end).
@@ -186,10 +193,18 @@ func (e *Editor) processPointerEvent(gtx layout.Context, ev event.Event) (Editor
 		case evt.Kind == pointer.Drag && evt.Source == pointer.Mouse:
 			if e.dragging {
 				e.blinkStart = gtx.Now
-				e.text.MoveCoord(image.Point{
-					X: int(math.Round(float64(evt.Position.X))),
-					Y: int(math.Round(float64(evt.Position.Y))),
-				})
+				// If column edit mode is active, update column selection
+				if e.ColumnEditEnabled() {
+					e.updateColumnSelection(gtx, image.Point{
+						X: int(math.Round(float64(evt.Position.X))),
+						Y: int(math.Round(float64(evt.Position.Y))),
+					})
+				} else {
+					e.text.MoveCoord(image.Point{
+						X: int(math.Round(float64(evt.Position.X))),
+						Y: int(math.Round(float64(evt.Position.Y))),
+					})
+				}
 				e.scrollCaret = true
 
 				if release {

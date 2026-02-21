@@ -6,6 +6,7 @@ import (
 	"gioui.org/unit"
 	"github.com/oligo/gvcode/gutter"
 	"github.com/oligo/gvcode/gutter/providers"
+	"github.com/oligo/gvcode/internal/folding"
 	"github.com/oligo/gvcode/textstyle/syntax"
 )
 
@@ -229,5 +230,32 @@ func WithStickyLines() EditorOption {
 		}
 		// Register sticky lines provider (it will be used internally by editor)
 		e.gutterManager.Register(providers.NewStickyLinesProvider())
+	}
+}
+
+// WithCodeFolding enables code folding functionality.
+// Code folding allows users to collapse and expand code blocks (functions, types, imports, etc.).
+// Shortcuts: Alt+C toggles column mode, Ctrl+[ / Ctrl+] for fold/unfold, Ctrl+Shift+[ / Ctrl+Shift+] for fold/unfold all.
+func WithCodeFolding() EditorOption {
+	return func(e *Editor) {
+		e.initBuffer()
+		// Create folding manager and attach to text view
+		foldManager := folding.NewManager()
+		e.text.SetFoldManager(foldManager)
+		// Register fold button provider in gutter
+		if e.gutterManager == nil {
+			e.gutterManager = gutter.NewManager()
+		}
+		e.gutterManager.Register(providers.NewFoldButtonProvider(foldManager))
+	}
+}
+
+// WithColumnEdit enables column (vertical) editing mode.
+// Column editing allows selecting and editing a rectangular block of text across multiple lines.
+// Shortcut: Alt+C toggles column mode on/off.
+func WithColumnEdit() EditorOption {
+	return func(e *Editor) {
+		e.initBuffer()
+		e.SetColumnEditMode(true)
 	}
 }
