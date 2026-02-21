@@ -149,10 +149,10 @@ func parseDiffOutput(output []byte) []*providers.DiffHunk {
 
 		// Process hunk content
 		if inHunk && currentHunk != nil {
-			if strings.HasPrefix(line, "-") {
-				currentHunk.OldLines = append(currentHunk.OldLines, strings.TrimPrefix(line, "-"))
-			} else if strings.HasPrefix(line, "+") {
-				currentHunk.NewLines = append(currentHunk.NewLines, strings.TrimPrefix(line, "+"))
+			if after, ok := strings.CutPrefix(line, "-"); ok {
+				currentHunk.OldLines = append(currentHunk.OldLines, after)
+			} else if after, ok := strings.CutPrefix(line, "+"); ok {
+				currentHunk.NewLines = append(currentHunk.NewLines, after)
 			}
 		}
 	}
