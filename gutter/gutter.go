@@ -10,6 +10,11 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
+const (
+	// LineNumberProviderID is the unique identifier for the line number provider.
+	LineNumberProviderID = "linenumber"
+)
+
 // GutterProvider defines the interface for components that render content
 // in the gutter area of the editor. Providers are rendered left-to-right
 // sorted by their priority (lower priority = closer to text).
@@ -28,6 +33,15 @@ type GutterProvider interface {
 
 	// Layout renders the gutter content for the visible lines.
 	Layout(gtx layout.Context, ctx GutterContext) layout.Dimensions
+}
+
+// LineContentProvider is an optional interface that GutterProviders can implement
+// to receive the contents of visible lines for analysis.
+type LineContentProvider interface {
+	GutterProvider
+	// SetLineContents sets the contents of all visible lines for analysis.
+	// The startLine parameter indicates the absolute line number of the first line in the slice.
+	SetLineContents(lines []string, startLine int)
 }
 
 // GutterContext provides the context needed for gutter providers to render
@@ -55,6 +69,10 @@ type GutterContext struct {
 
 	// Colors provides the color scheme for gutter rendering.
 	Colors *GutterColors
+
+	// LineNumberWidth is the width of the line number column in pixels.
+	// This is set by the gutter manager when a line number provider is present.
+	LineNumberWidth int
 }
 
 // Paragraph contains metadata about a paragraph (logical line) in the document.
@@ -116,3 +134,22 @@ type LineHighlight struct {
 	// Color is the background color for the highlight.
 	Color gvcolor.Color
 }
+
+// RunButtonEvent represents a click event on a run button in the gutter.
+type RunButtonEvent struct {
+	// ButtonType is the type of button that was clicked.
+	ButtonType int
+
+	// Line is the 0-based line number where the button was clicked.
+	Line int
+
+	// ButtonText is the text content of the line containing the button.
+	ButtonText string
+}
+
+// RunButtonType constants
+const (
+	RunButtonNone = iota
+	RunButtonMain
+	RunButtonTest
+)

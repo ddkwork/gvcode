@@ -115,6 +115,21 @@ func (m *Manager) CollectHighlights() []LineHighlight {
 	return highlights
 }
 
+// CollectRunButtonEvents collects run button events from all providers that have them.
+func (m *Manager) CollectRunButtonEvents() []RunButtonEvent {
+	var events []RunButtonEvent
+	for _, p := range m.providers {
+		// Check if provider has GetPendingEvents method
+		type eventCollector interface {
+			GetPendingEvents() []RunButtonEvent
+		}
+		if collector, ok := p.(eventCollector); ok {
+			events = append(events, collector.GetPendingEvents()...)
+		}
+	}
+	return events
+}
+
 // TotalWidth returns the total width of all gutter columns including gaps.
 func (m *Manager) TotalWidth() int {
 	return m.totalWidth
@@ -299,6 +314,11 @@ func (m *Manager) Layout(gtx layout.Context, ctx GutterContext) layout.Dimension
 	}
 
 	m.totalWidth = totalWidth
+
+	// Find line number provider width and set it in context for other providers
+	if lineNumberProvider := m.GetProvider(LineNumberProviderID); lineNumberProvider != nil {
+		ctx.LineNumberWidth = m.providerWidths[LineNumberProviderID]
+	}
 
 	// Set up the clip area and register for events
 	area := clip.Rect(image.Rectangle{Max: image.Point{X: totalWidth, Y: gtx.Constraints.Max.Y}})

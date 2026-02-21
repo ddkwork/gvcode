@@ -51,6 +51,9 @@ func (e *Editor) buildGutterContext(gtx layout.Context, shaper *text.Shaper) gut
 		currentLine, _ = e.text.CaretPos()
 	}
 
+	// Feed line contents to run button provider if it exists
+	e.feedLineContentsToRunButtonProvider(paragraphs)
+
 	return gutter.GutterContext{
 		Shaper:      shaper,
 		TextParams:  e.text.Params(),
@@ -59,6 +62,47 @@ func (e *Editor) buildGutterContext(gtx layout.Context, shaper *text.Shaper) gut
 		CurrentLine: currentLine,
 		LineHeight:  e.text.GetLineHeight(),
 		Colors:      e.gutterColors(),
+	}
+}
+
+// feedLineContentsToRunButtonProvider reads line contents and feeds them to the run button provider.
+func (e *Editor) feedLineContentsToRunButtonProvider(paragraphs []gutter.Paragraph) {
+	// Find the run button provider
+	var runButtonProvider gutter.LineContentProvider
+
+	for _, p := range e.gutterManager.Providers() {
+		if p.ID() == "runbutton" {
+			if rb, ok := p.(gutter.LineContentProvider); ok {
+				runButtonProvider = rb
+				break
+			}
+		}
+	}
+
+	if runButtonProvider == nil {
+		return
+	}
+
+	// Read line contents for all visible paragraphs
+	lines := make([]string, 0, len(paragraphs))
+	for _, para := range paragraphs {
+		// Read line content from buffer
+		startOff := e.buffer.RuneOffset(para.RuneOff)
+		endOff := e.buffer.RuneOffset(para.RuneOff + para.Runes)
+
+		if cap(e.scratch) < endOff-startOff {
+			e.scratch = make([]byte, endOff-startOff)
+		}
+		e.scratch = e.scratch[:endOff-startOff]
+		n, _ := e.buffer.ReadAt(e.scratch, int64(startOff))
+
+		lines = append(lines, string(e.scratch[:n]))
+	}
+
+	// Feed to provider with starting line number
+	if len(paragraphs) > 0 {
+		startLine := paragraphs[0].Index
+		runButtonProvider.SetLineContents(lines, startLine)
 	}
 }
 

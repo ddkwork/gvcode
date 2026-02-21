@@ -17,9 +17,6 @@ import (
 )
 
 const (
-	// LineNumberProviderID is the unique identifier for the line number provider.
-	LineNumberProviderID = "linenumber"
-
 	// defaultMinDigits is the minimum number of digits to reserve space for.
 	defaultMinDigits = 4
 )
@@ -66,7 +63,7 @@ func NewLineNumberProviderWithMinDigits(minDigits int) *LineNumberProvider {
 
 // ID returns the unique identifier for this provider.
 func (p *LineNumberProvider) ID() string {
-	return LineNumberProviderID
+	return gutter.LineNumberProviderID
 }
 
 // Priority returns the rendering priority. Line numbers have a high priority (100)
