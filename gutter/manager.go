@@ -130,6 +130,12 @@ func (m *Manager) CollectRunButtonEvents() []RunButtonEvent {
 	return events
 }
 
+// StickyLineEvent represents a click event on a sticky line.
+type StickyLineEvent struct {
+	Line int
+	Text string
+}
+
 // TotalWidth returns the total width of all gutter columns including gaps.
 func (m *Manager) TotalWidth() int {
 	return m.totalWidth

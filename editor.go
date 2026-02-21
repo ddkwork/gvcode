@@ -234,6 +234,13 @@ func (e *Editor) Layout(gtx layout.Context, lt *text.Shaper) layout.Dimensions {
 				// Paint provider-based line highlights (full-width, behind content)
 				highlights := e.gutterManager.CollectHighlights()
 				e.paintProviderHighlights(gtx, ctx, highlights)
+
+				// Collect run button events
+				runButtonEvents := e.gutterManager.CollectRunButtonEvents()
+				for _, evt := range runButtonEvents {
+					e.pending = append(e.pending, RunButtonEventWrapper{Event: evt})
+				}
+
 				return dims
 			}
 
@@ -1082,3 +1089,10 @@ func (s GutterEventWrapper) isEditorEvent() {}
 type GutterEventWrapper struct {
 	Event gutter.GutterEvent
 }
+
+// RunButtonEventWrapper wraps a run button event.
+type RunButtonEventWrapper struct {
+	Event gutter.RunButtonEvent
+}
+
+func (RunButtonEventWrapper) isEditorEvent() {}
