@@ -78,6 +78,31 @@ type Editor struct {
 	wordHighlighter wordHighlighter
 	// selection highlighting state
 	selectionHighlighter selectionHighlighter
+	// column edit mode state
+	columnEdit columnEditState
+}
+
+// columnEditState tracks state for column/vertical editing mode
+type columnEditState struct {
+	// enabled indicates whether column editing mode is active
+	enabled bool
+	// selections holds multiple cursor positions for column editing
+	// each cursor represents a position on a different line
+	selections []columnCursor
+	// anchor stores the initial mouse position when starting a column selection
+	anchor image.Point
+}
+
+// columnCursor represents a cursor position for column editing
+type columnCursor struct {
+	// line is the line number (0-based)
+	line int
+	// col is the column position (in runes, 0-based)
+	col int
+	// startX is the pixel X coordinate of this cursor
+	startX int
+	// endX is the pixel X coordinate of the selection end (if different from startX)
+	endX int
 }
 
 type imeState struct {
@@ -276,6 +301,14 @@ func (e *Editor) layout(gtx layout.Context) layout.Dimensions {
 
 		e.paintText(gtx, textColor)
 	}
+
+	// Paint column selection if active
+	if e.ColumnEditEnabled() && len(e.columnEdit.selections) > 0 {
+		e.paintColumnSelection(gtx, selectColor)
+		// Paint multiple carets for column editing mode
+		e.paintColumnCarets(gtx, textColor)
+	}
+
 	if gtx.Enabled() {
 		e.paintCaret(gtx, textColor)
 	}
@@ -310,6 +343,86 @@ func (e *Editor) paintCaret(gtx layout.Context, material color.Color) {
 		return
 	}
 	e.text.PaintCaret(gtx, material.Op(gtx.Ops))
+}
+
+// paintColumnSelection paints the column selection rectangles for column editing mode
+func (e *Editor) paintColumnSelection(gtx layout.Context, material color.Color) {
+	e.initBuffer()
+
+	lineHeight := e.text.GetLineHeight().Round()
+	scrollOff := e.text.ScrollOff()
+
+	for _, cursor := range e.columnEdit.selections {
+		// Calculate screen position for this line
+		lineY := cursor.line * lineHeight
+		screenY := lineY - scrollOff.Y
+
+		// Only draw if visible
+		if screenY < -lineHeight || screenY > gtx.Constraints.Max.Y {
+			continue
+		}
+
+		// Draw selection rectangle from startX to endX
+		startX := cursor.startX - scrollOff.X
+		endX := cursor.endX - scrollOff.X
+
+		width := endX - startX
+		if width <= 0 {
+			width = 2 // Minimum visible width for cursor
+		}
+
+		// Draw the selection rectangle
+		material.Op(gtx.Ops).Add(gtx.Ops)
+		stack := clip.Rect(image.Rect(startX, screenY, startX+width, screenY+lineHeight)).Push(gtx.Ops)
+		paint.PaintOp{}.Add(gtx.Ops)
+		stack.Pop()
+	}
+}
+
+// paintColumnCarets paints multiple carets for column editing mode
+func (e *Editor) paintColumnCarets(gtx layout.Context, material color.Color) {
+	e.initBuffer()
+	if !e.showCaret || e.mode == ModeReadOnly {
+		return
+	}
+
+	lineHeight := e.text.GetLineHeight().Round()
+	scrollOff := e.text.ScrollOff()
+	// Convert unit.Dp to pixels using gtx.Dp()
+	caretWidthPx := gtx.Dp(unit.Dp(1))
+
+	// In column edit mode, we need to calculate the offset from startX to the current cursor position
+	// Use the first line as reference to determine the pixel offset within the rectangle
+	var offsetXFromStartX int
+	if len(e.columnEdit.selections) > 0 {
+		refCursor := e.columnEdit.selections[0]
+		// Get the pixel position at startX for this line
+		_, posAtStart := e.ConvertPos(refCursor.line, refCursor.col)
+		// Calculate offset from the original startX to current cursor position
+		offsetXFromStartX = int(posAtStart.X) - refCursor.startX
+	}
+
+	for _, cursor := range e.columnEdit.selections {
+		// Calculate screen position for this line
+		lineY := cursor.line * lineHeight
+		screenY := lineY - scrollOff.Y
+
+		// Only draw if visible
+		if screenY < -lineHeight || screenY > gtx.Constraints.Max.Y {
+			continue
+		}
+
+		// In column edit mode, carets should align vertically by pixel column, not by character index
+		// Calculate the caret X position based on the rectangle's startX plus the offset
+		caretX := cursor.startX + offsetXFromStartX - scrollOff.X
+		caretY := screenY
+
+		// Draw caret as a thin vertical line
+		material.Op(gtx.Ops).Add(gtx.Ops)
+		stack := clip.Rect(image.Rect(caretX, caretY, caretX+caretWidthPx, caretY+lineHeight)).Push(gtx.Ops)
+		paint.PaintOp{}.Add(gtx.Ops)
+		stack.Pop()
+	}
 }
 
 // Len is the length of the editor contents, in runes.
@@ -393,6 +506,11 @@ func (e *Editor) Delete(graphemeClusters int) (deletedRunes int) {
 	e.initBuffer()
 	if graphemeClusters == 0 {
 		return 0
+	}
+
+	// Handle column editing mode
+	if e.ColumnEditEnabled() && len(e.columnEdit.selections) > 0 {
+		return e.onColumnEditDelete(graphemeClusters)
 	}
 
 	if graphemeClusters < 0 {
@@ -755,6 +873,165 @@ func sign(n int) int {
 	default:
 		return 0
 	}
+}
+
+// onColumnEditDelete handles delete operations in column editing mode
+func (e *Editor) onColumnEditDelete(graphemeClusters int) (deletedRunes int) {
+	if len(e.columnEdit.selections) == 0 {
+		println("[ColumnEdit] onColumnEditDelete called but no selections exist")
+		return 0
+	}
+
+	println("[ColumnEdit] onColumnEditDelete - deleting", graphemeClusters, "grapheme clusters from", len(e.columnEdit.selections), "positions")
+
+	// Calculate the width of deleted runes to shrink the rectangle
+	// Approximate: average character width of 10 pixels
+	deletedWidth := abs(graphemeClusters) * 10
+
+	// Group operations for undo
+	e.buffer.GroupOp()
+
+	// Delete at each column cursor position
+	for i := range e.columnEdit.selections {
+		cursor := &e.columnEdit.selections[i]
+
+		// Calculate the rune offset for this position
+		runeOff, _ := e.ConvertPos(cursor.line, cursor.col)
+		println("[ColumnEdit] Deleting at line:", cursor.line, "col:", cursor.col, "runeOff:", runeOff)
+
+		// Determine the range to delete
+		start := runeOff
+		end := runeOff
+
+		if graphemeClusters > 0 {
+			// Delete forward
+			end = runeOff + graphemeClusters
+		} else {
+			// Delete backward
+			start = runeOff + graphemeClusters
+		}
+
+		// Clamp to valid range
+		if start < 0 {
+			start = 0
+		}
+		if end > e.Len() {
+			end = e.Len()
+		}
+
+		if start != end {
+			// Delete the text at this position
+			deleted := end - start
+			e.replace(start, end, "")
+			deletedRunes += deleted
+			println("[ColumnEdit] Deleted", deleted, "runes from line:", cursor.line)
+
+			// Adjust other cursor positions to account for deletion
+			for j := i + 1; j < len(e.columnEdit.selections); j++ {
+				if e.columnEdit.selections[j].line > cursor.line {
+					// Adjust cursor position for lines below
+					break
+				}
+			}
+
+			// Move the cursor back if we deleted backward
+			if graphemeClusters < 0 {
+				cursor.col += graphemeClusters
+				if cursor.col < 0 {
+					cursor.col = 0
+				}
+			}
+
+			// Shrink the rectangle (reduce endX)
+			cursor.endX -= deletedWidth
+			// Ensure minimum width
+			if cursor.endX-cursor.startX < 2 {
+				cursor.endX = cursor.startX + 2
+			}
+		}
+	}
+
+	e.buffer.UnGroupOp()
+	println("[ColumnEdit] onColumnEditDelete completed, total deleted:", deletedRunes)
+
+	e.scrollCaret = true
+	e.scroller.Stop()
+	e.text.MoveCaret(0, 0)
+	return deletedRunes
+}
+
+// moveColumnCarets moves all column carets in the specified direction
+// delta: number of columns to move (positive = right, negative = left)
+// The selection rectangle boundaries (startX, endX) remain unchanged
+// Only the cursor position (col) moves within the rectangle
+func (e *Editor) moveColumnCarets(delta int) {
+	if len(e.columnEdit.selections) == 0 {
+		return
+	}
+
+	// In column edit mode, the rectangle (startX to endX) stays fixed
+	// Only the cursor position moves within the rectangle boundaries
+	// All cursors move by the same column count to maintain alignment
+
+	for i := range e.columnEdit.selections {
+		cursor := &e.columnEdit.selections[i]
+
+		// Calculate the new column position
+		newCol := cursor.col + delta
+
+		// Get line length to ensure we don't go beyond line boundaries
+		lineRuneOff := e.text.ConvertPos(cursor.line, 0)
+		nextLineRuneOff := e.text.ConvertPos(cursor.line+1, 0)
+		lineLength := nextLineRuneOff - lineRuneOff
+
+		// Clamp to line boundaries
+		if newCol < 0 {
+			newCol = 0
+		}
+		if newCol > lineLength {
+			newCol = lineLength
+		}
+
+		// Get the pixel position at the new col
+		_, newPos := e.ConvertPos(cursor.line, newCol)
+		newPixelX := int(newPos.X)
+
+		// Limit cursor movement to stay within the rectangle (startX to endX)
+		// Calculate pixel boundaries for this line
+		if newPixelX < cursor.startX {
+			// Cursor would move before startX, find the col at startX
+			if runeOff, posAtStart := e.ConvertPos(cursor.line, cursor.col); runeOff >= 0 {
+				if int(posAtStart.X) < cursor.startX {
+					// Find the col that corresponds to startX
+					bestCol := cursor.col
+					for testCol := cursor.col; testCol <= lineLength; testCol++ {
+						if _, testPos := e.ConvertPos(cursor.line, testCol); int(testPos.X) >= cursor.startX {
+							bestCol = testCol
+							break
+						}
+					}
+					newCol = bestCol
+				}
+			}
+		}
+
+		if newPixelX > cursor.endX {
+			// Cursor would move past endX, find the col at endX
+			bestCol := cursor.col
+			for testCol := cursor.col; testCol <= lineLength; testCol++ {
+				if _, testPos := e.ConvertPos(cursor.line, testCol); int(testPos.X) <= cursor.endX {
+					bestCol = testCol
+				}
+			}
+			newCol = bestCol
+		}
+
+		// Update only the cursor column
+		// The rectangle boundaries (startX, endX) remain unchanged
+		cursor.col = newCol
+	}
+
+	e.scrollCaret = true
 }
 
 func (s ChangeEvent) isEditorEvent()        {}
