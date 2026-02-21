@@ -131,6 +131,16 @@ func (e *Editor) buildBuiltinCommands() {
 			return nil
 		})
 
+	registerCommand(key.Filter{Focus: e, Name: "D", Required: key.ModShortcut},
+		func(gtx layout.Context, evt key.Event) EditorEvent {
+			if e.mode != ModeReadOnly {
+				if e.DuplicateLine() != 0 {
+					return ChangeEvent{}
+				}
+			}
+			return nil
+		})
+
 	registerCommand(key.Filter{Focus: e, Name: key.NameHome, Optional: key.ModShortcut | key.ModShift},
 		func(gtx layout.Context, evt key.Event) EditorEvent {
 			selAct := textview.SelectionClear
