@@ -51,14 +51,35 @@ func NewGitDiff(filePath string) *GitDiff {
 
 }
 
-// ParseDiffContent diffs the given buffer content against the HEAD version
-// of the file, without requiring the buffer to be saved to disk first.
+// ParseDiff diffs the given buffer content against HEAD.
+// All hunks are marked Staged if the buffer matches the index (staged) version,
+// meaning the user hasn't made further edits beyond what's staged.
 func (d *GitDiff) ParseDiff(content []byte) []*providers.DiffHunk {
 	if d == nil {
 		return nil
 	}
 
-	// Get the HEAD version so diffs persist after staging.
+	hunks := d.parseBufferDiff(content)
+
+	// Get the index version to determine staging status.
+	cmd := exec.Command("git", "show", ":./"+d.filename)
+	cmd.Dir = d.dir
+	indexContent, err := cmd.Output()
+
+	// If the buffer matches the index, all changes are staged.
+	if err == nil && bytes.Equal(indexContent, content) {
+		for _, h := range hunks {
+			h.Staged = true
+		}
+	}
+
+	return hunks
+}
+
+// parseBufferDiff returns the diff between HEAD and the given buffer content,
+// using pipes to avoid writing temp files on every keystroke.
+func (d *GitDiff) parseBufferDiff(content []byte) []*providers.DiffHunk {
+	// Get the HEAD version of the file.
 	cmd := exec.Command("git", "show", "HEAD:./"+d.filename)
 	cmd.Dir = d.dir
 	original, err := cmd.Output()
@@ -67,6 +88,7 @@ func (d *GitDiff) ParseDiff(content []byte) []*providers.DiffHunk {
 		original = nil
 	}
 
+	// Pass HEAD version via fd 3 and buffer content via stdin.
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		return nil
@@ -95,7 +117,6 @@ func (d *GitDiff) ParseDiff(content []byte) []*providers.DiffHunk {
 	if len(output) == 0 {
 		return nil
 	}
-
 	return parseDiffOutput(output)
 }
 

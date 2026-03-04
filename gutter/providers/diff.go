@@ -34,6 +34,8 @@ const (
 
 // DiffHunk represents a single change in the diff.
 type DiffHunk struct {
+	// The diff is staged or not
+	Staged bool
 	// Type is the type of change (added, modified, deleted).
 	Type DiffType
 
@@ -216,6 +218,9 @@ func (p *VCSDiffProvider) Layout(gtx layout.Context, ctx gutter.GutterContext) l
 			}
 
 			if c.IsSet() {
+				if hunk.Staged {
+					c = c.MulAlpha(0x60)
+				}
 				p.drawIndicatorBar(gtx, para, indicatorWidthPx, lineHeight, scrollOffY, c)
 			}
 		}
