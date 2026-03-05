@@ -549,6 +549,7 @@ func (e *Editor) replace(start, end int, s string) int {
 	}
 	e.ime.start = adjust(e.ime.start)
 	e.ime.end = adjust(e.ime.end)
+	e.text.UpdateSyntaxTokensOffset(start, end, newEnd)
 	return sc
 }
 

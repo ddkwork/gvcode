@@ -35,3 +35,17 @@ func (e *TextView) SetSyntaxTokens(tokens ...syntax.Token) {
 	}
 	e.syntaxStyles.Set(tokens...)
 }
+
+// UpdateSyntaxTokensOffset adjusts existing syntax token offsets after a text edit.
+// Parameters mirror Editor.replace: start and end are the old replaced range (runes),
+// newEnd is start + (number of runes inserted).
+//
+// This method is necessary when code highlighting occurs in an async way, during the
+// short time window we need to keep the highlighting visually stable. When the async
+// full highlighting completes, it replaces the shifted tokens with fully correct ones.
+func (e *TextView) UpdateSyntaxTokensOffset(start, end, newEnd int) {
+	if e.syntaxStyles == nil {
+		return
+	}
+	e.syntaxStyles.AdjustOffsets(start, end, newEnd)
+}

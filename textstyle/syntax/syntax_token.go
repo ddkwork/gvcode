@@ -91,6 +91,55 @@ func (t *TextTokens) QueryRange(start, end int) []TokenStyle {
 	return result
 }
 
+// AdjustOffsets shifts token positions after a text edit.
+// start and end define the old replaced range (in runes), newEnd = start + inserted runes.
+// Tokens before the edit are unchanged, tokens after are shifted by delta (newEnd - end),
+// and tokens overlapping the edit are clamped. Collapsed tokens (Start >= End) are removed.
+func (t *TextTokens) AdjustOffsets(start, end, newEnd int) {
+	if len(t.tokens) == 0 {
+		return
+	}
+
+	delta := newEnd - end
+	if delta == 0 && start == end {
+		return // no-op edit
+	}
+
+	n := 0
+	for i := range t.tokens {
+		tk := &t.tokens[i]
+
+		// Adjust Start: tokens starting at or after the old end shift;
+		// tokens starting inside the replaced range clamp to newEnd.
+		switch {
+		case tk.Start >= end:
+			tk.Start += delta
+		case tk.Start > start:
+			if tk.Start > newEnd {
+				tk.Start = newEnd
+			}
+		}
+
+		// Adjust End: tokens ending past the old end shift;
+		// tokens ending inside the replaced range clamp to newEnd.
+		switch {
+		case tk.End > end:
+			tk.End += delta
+		case tk.End > start:
+			if tk.End > newEnd {
+				tk.End = newEnd
+			}
+		}
+
+		// Keep only tokens that still span at least one rune.
+		if tk.Start < tk.End {
+			t.tokens[n] = *tk
+			n++
+		}
+	}
+	t.tokens = t.tokens[:n]
+}
+
 // Split implements painter.LineSplitter
 func (t *TextTokens) Split(line layout.Line, runs *[]painter.RenderRun) {
 	t.splitter.Split(line, t, runs)
