@@ -57,8 +57,8 @@ func (e *Editor) buildGutterContext(gtx layout.Context, shaper *text.Shaper) gut
 	e.feedLineContentsToRunButtonProvider(paragraphs)
 	// Feed line contents to sticky lines provider if it exists
 	e.feedLineContentsToStickyLinesProvider(paragraphs)
-	// Feed line contents to fold button provider if it exists
 	e.feedLineContentsToFoldButtonProvider(paragraphs)
+	e.feedLineContentsToColorIndicatorProvider(paragraphs)
 
 	return gutter.GutterContext{
 		Shaper:      shaper,
@@ -68,6 +68,7 @@ func (e *Editor) buildGutterContext(gtx layout.Context, shaper *text.Shaper) gut
 		CurrentLine: currentLine,
 		LineHeight:  e.text.GetLineHeight(),
 		Colors:      e.gutterColors(),
+		LayoutLines: textLayout.Lines,
 	}
 }
 
@@ -187,6 +188,37 @@ func (e *Editor) feedLineContentsToFoldButtonProvider(paragraphs []gutter.Paragr
 
 	// Feed to provider
 	foldButtonProvider.SetLineContents(lines, 0)
+}
+
+// feedLineContentsToColorIndicatorProvider reads all line contents and feeds them to the color indicator provider.
+func (e *Editor) feedLineContentsToColorIndicatorProvider(paragraphs []gutter.Paragraph) {
+	var colorIndicatorProvider gutter.LineContentProvider
+
+	for _, p := range e.gutterManager.Providers() {
+		if p.ID() == "colorindicator" {
+			if ci, ok := p.(gutter.LineContentProvider); ok {
+				colorIndicatorProvider = ci
+				break
+			}
+		}
+	}
+
+	if colorIndicatorProvider == nil {
+		return
+	}
+
+	totalLines := e.text.Paragraphs()
+	if totalLines <= 0 {
+		return
+	}
+
+	srcReader := buffer.NewReader(e.buffer)
+	e.scratch = srcReader.ReadAll(e.scratch)
+	allContent := string(e.scratch)
+
+	lines := strings.Split(allContent, "\n")
+
+	colorIndicatorProvider.SetLineContents(lines, 0)
 }
 
 // gutterColors returns the GutterColors based on the color palette.
