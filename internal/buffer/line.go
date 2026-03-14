@@ -70,7 +70,6 @@ func (li *lineIndex) UpdateOnDelete(runeIndex int, length int) {
 		lines:     removedLines,
 	}
 	li.undo.push(op)
-
 }
 
 // Optional. To make the situation simpler, we use Rebuild to build the
@@ -277,7 +276,7 @@ func (li *lineIndex) applyDelete(runeIndex int, length int) []lineInfo {
 		} else {
 			removed.hasLineBreak = endLine.hasLineBreak
 			li.lines = slices.Delete(li.lines, endIndex, endIndex+1)
-			//li.lines = append(li.lines[:endIndex], li.lines[endIndex+1:]...)
+			// li.lines = append(li.lines[:endIndex], li.lines[endIndex+1:]...)
 		}
 
 		removedLines = append(removedLines, removed)
@@ -292,7 +291,7 @@ func (li *lineIndex) applyDelete(runeIndex int, length int) []lineInfo {
 	}
 
 	// Handle the splitting of the starting line
-	//startLine := li.lines[startIndex]
+	// startLine := li.lines[startIndex]
 	splitLeft := runeIndex - startLineRuneCount
 	removed := lineInfo{
 		length:       li.lines[startIndex].length - splitLeft,

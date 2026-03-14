@@ -103,7 +103,6 @@ func (rb *lineSplitter) Split(line layout.Line, textTokens *TextTokens, runs *[]
 		// no style
 		rb.commitLast(runs)
 	}
-
 }
 
 func (rb *lineSplitter) readUntil(runeOff int) {

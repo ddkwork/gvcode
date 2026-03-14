@@ -94,7 +94,6 @@ func (s *session) Update(ctx gvcode.CompletionContext) []gvcode.CompletionCandid
 	}
 
 	return s.state.completor.FilterAndRank(string(s.prefix), s.candidates)
-
 }
 
 func (s *session) makeInvalid() {

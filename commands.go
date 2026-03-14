@@ -315,7 +315,6 @@ func (e *Editor) buildBuiltinCommands() {
 			e.text.MoveLines(+1, selAct)
 			return nil
 		})
-
 }
 
 func (e *Editor) processCommands(gtx layout.Context) EditorEvent {

@@ -9,9 +9,7 @@ import (
 // chunk size used to grow the buffer.
 const chunkSize = 4096
 
-var (
-	errReadRune = errors.New("read rune error")
-)
+var errReadRune = errors.New("read rune error")
 
 // textBuffer is a byte buffer with a sparsing rune index to retrieve
 // rune location to byte location efficiently.

@@ -104,7 +104,6 @@ func TestIndentLines(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestDedentLine(t *testing.T) {
@@ -151,7 +150,6 @@ func TestDedentLine(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestIndentOnBreak(t *testing.T) {
@@ -227,5 +225,4 @@ func TestIndentOnBreak(t *testing.T) {
 			}
 		})
 	}
-
 }
