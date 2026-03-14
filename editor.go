@@ -604,6 +604,45 @@ func (e *Editor) InsertLine(s string) (insertedRunes int) {
 	return
 }
 
+// DuplicateLine duplicates the current line and places the caret at the end of the duplicated line.
+// Similar to GoLand's Ctrl+D functionality.
+func (e *Editor) DuplicateLine() (duplicatedRunes int) {
+	e.initBuffer()
+	if e.mode == ModeReadOnly {
+		return 0
+	}
+
+	start, end := e.text.SelectedLineRange()
+	if start == end {
+		return 0
+	}
+
+	// Read the current line content
+	e.scratch = e.scratch[:0]
+	startOff := e.buffer.RuneOffset(start)
+	endOff := e.buffer.RuneOffset(end)
+	if cap(e.scratch) < endOff-startOff {
+		e.scratch = make([]byte, endOff-startOff)
+	}
+	e.scratch = e.scratch[:endOff-startOff]
+	n, _ := e.buffer.ReadAt(e.scratch, int64(startOff))
+	lineContent := e.scratch[:n]
+
+	// Duplicate the line: insert the line content at the end of current line
+	// Group operations for undo
+	e.buffer.GroupOp()
+	moves := e.replace(end, end, string(lineContent))
+	e.buffer.UnGroupOp()
+
+	// Move caret to the end of the duplicated line
+	newCaretPos := end + moves
+	e.text.MoveCaret(0, 0)
+	e.SetCaret(newCaretPos, newCaretPos)
+	e.scrollCaret = true
+
+	return moves
+}
+
 // undo revert the last operation(s).
 func (e *Editor) undo() (EditorEvent, bool) {
 	e.initBuffer()
