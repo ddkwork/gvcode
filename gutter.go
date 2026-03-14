@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"sort"
+	"strings"
 
 	"gioui.org/layout"
 	"gioui.org/op/clip"
@@ -11,6 +12,7 @@ import (
 	"gioui.org/text"
 	gvcolor "github.com/oligo/gvcode/color"
 	"github.com/oligo/gvcode/gutter"
+	"github.com/oligo/gvcode/internal/buffer"
 	"github.com/oligo/gvcode/internal/painter"
 )
 
@@ -53,6 +55,8 @@ func (e *Editor) buildGutterContext(gtx layout.Context, shaper *text.Shaper) gut
 
 	// Feed line contents to run button provider if it exists
 	e.feedLineContentsToRunButtonProvider(paragraphs)
+	// Feed line contents to sticky lines provider if it exists
+	e.feedLineContentsToStickyLinesProvider(paragraphs)
 
 	return gutter.GutterContext{
 		Shaper:      shaper,
@@ -104,6 +108,47 @@ func (e *Editor) feedLineContentsToRunButtonProvider(paragraphs []gutter.Paragra
 		startLine := paragraphs[0].Index
 		runButtonProvider.SetLineContents(lines, startLine)
 	}
+}
+
+// feedLineContentsToStickyLinesProvider reads all line contents and feeds them to the sticky lines provider.
+func (e *Editor) feedLineContentsToStickyLinesProvider(paragraphs []gutter.Paragraph) {
+	// Find the sticky lines provider
+	var stickyLinesProvider gutter.LineContentProvider
+
+	for _, p := range e.gutterManager.Providers() {
+		if p.ID() == "stickylines" {
+			if sl, ok := p.(gutter.LineContentProvider); ok {
+				stickyLinesProvider = sl
+				break
+			}
+		}
+	}
+
+	if stickyLinesProvider == nil {
+		return
+	}
+
+	// For sticky lines, we need ALL lines, not just visible ones
+	// to analyze the entire code structure
+	totalLines := e.text.Paragraphs()
+
+	// If we already have the right number of lines cached, skip
+	if totalLines <= 0 {
+		return
+	}
+
+	// Read all lines from the buffer using buffer.NewReader
+	srcReader := buffer.NewReader(e.buffer)
+
+	// Read all content at once
+	e.scratch = srcReader.ReadAll(e.scratch)
+	allContent := string(e.scratch)
+
+	// Split into lines
+	lines := strings.Split(allContent, "\n")
+
+	// Feed to provider
+	stickyLinesProvider.SetLineContents(lines, 0)
 }
 
 // gutterColors returns the GutterColors based on the color palette.
