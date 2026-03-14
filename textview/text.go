@@ -11,6 +11,7 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	"github.com/oligo/gvcode/internal/buffer"
+	"github.com/oligo/gvcode/internal/folding"
 	lt "github.com/oligo/gvcode/internal/layout"
 	"github.com/oligo/gvcode/internal/painter"
 	"github.com/oligo/gvcode/textstyle/decoration"
@@ -105,6 +106,9 @@ type TextView struct {
 	regions []Region
 	// line buffer for line related operations.
 	lineBuf []byte
+
+	// foldManager manages code folding regions.
+	foldManager *folding.Manager
 }
 
 func NewTextView() *TextView {
@@ -344,6 +348,21 @@ func (e *TextView) TextLayout() *lt.TextLayout {
 	return &e.layouter
 }
 
+// SetFoldManager sets the folding manager for this text view.
+// The fold manager controls which lines are visible (not folded).
+func (e *TextView) SetFoldManager(fm *folding.Manager) {
+	if e.foldManager != fm {
+		e.foldManager = fm
+		e.layouter.SetFoldManager(fm)
+		e.invalidate()
+	}
+}
+
+// FoldManager returns the current folding manager.
+func (e *TextView) FoldManager() *folding.Manager {
+	return e.foldManager
+}
+
 func (e *TextView) scrollAbs(x, y int) {
 	e.scrollOff.X = x
 	e.scrollOff.Y = y
@@ -410,6 +429,11 @@ func (e *TextView) QueryPos(pos image.Point) (line, col int, runeOff int) {
 // invalidate mark the layout as invalid.
 func (e *TextView) invalidate() {
 	e.valid = false
+}
+
+// Invalidate forces a re-layout of the text on the next frame.
+func (e *TextView) Invalidate() {
+	e.invalidate()
 }
 
 // Set the text of the buffer. It returns the number of runes inserted.

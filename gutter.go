@@ -57,6 +57,8 @@ func (e *Editor) buildGutterContext(gtx layout.Context, shaper *text.Shaper) gut
 	e.feedLineContentsToRunButtonProvider(paragraphs)
 	// Feed line contents to sticky lines provider if it exists
 	e.feedLineContentsToStickyLinesProvider(paragraphs)
+	// Feed line contents to fold button provider if it exists
+	e.feedLineContentsToFoldButtonProvider(paragraphs)
 
 	return gutter.GutterContext{
 		Shaper:      shaper,
@@ -149,6 +151,42 @@ func (e *Editor) feedLineContentsToStickyLinesProvider(paragraphs []gutter.Parag
 
 	// Feed to provider
 	stickyLinesProvider.SetLineContents(lines, 0)
+}
+
+// feedLineContentsToFoldButtonProvider reads all line contents and feeds them to the fold button provider.
+func (e *Editor) feedLineContentsToFoldButtonProvider(paragraphs []gutter.Paragraph) {
+	// Find the fold button provider
+	var foldButtonProvider gutter.LineContentProvider
+
+	for _, p := range e.gutterManager.Providers() {
+		if p.ID() == "foldbutton" {
+			if fb, ok := p.(gutter.LineContentProvider); ok {
+				foldButtonProvider = fb
+				break
+			}
+		}
+	}
+
+	if foldButtonProvider == nil {
+		return
+	}
+
+	// For fold buttons, we need ALL lines to analyze the entire code structure
+	totalLines := e.text.Paragraphs()
+	if totalLines <= 0 {
+		return
+	}
+
+	// Read all lines from the buffer
+	srcReader := buffer.NewReader(e.buffer)
+	e.scratch = srcReader.ReadAll(e.scratch)
+	allContent := string(e.scratch)
+
+	// Split into lines
+	lines := strings.Split(allContent, "\n")
+
+	// Feed to provider
+	foldButtonProvider.SetLineContents(lines, 0)
 }
 
 // gutterColors returns the GutterColors based on the color palette.
