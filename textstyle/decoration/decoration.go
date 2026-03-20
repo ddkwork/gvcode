@@ -193,13 +193,22 @@ func (d *DecorationTree) QueryRange(start, end int) []Decoration {
 		return nil
 	}
 
-	all, _ := d.tree.AllIntersections(start, end)
+	all := d.queryTreeRange(start, end)
 	for _, deco := range d.emptyDecos {
 		if deco.Start >= start && deco.Start < end {
 			all = append(all, deco)
 		}
 	}
 
+	return all
+}
+
+func (d *DecorationTree) queryTreeRange(start, end int) []Decoration {
+	if start > end {
+		return nil
+	}
+
+	all, _ := d.tree.AllIntersections(start, end)
 	// AllIntersections uses inclusive boundaries, but our range uses exclusive end.
 	// Remove decorations that don't overlap: either ends at or before start,
 	// or starts at or after end.
@@ -212,10 +221,23 @@ func (d *DecorationTree) RemoveBySource(source string) error {
 	all := d.getAllNodes()
 	for _, deco := range all {
 		if deco.Source == source {
+			// Find all values at this exact key position (not overlapping)
+			nodeValues, _ := d.tree.Find(deco.Start, deco.End)
+			// Filter out decorations with matching source
+			nodeValues = slices.DeleteFunc(nodeValues, func(val Decoration) bool {
+				return val.Source == source
+			})
+
 			err := d.tree.Delete(deco.Start, deco.End)
 			if err != nil {
 				return err
 			}
+
+			if len(nodeValues) != 0 {
+				// Insert the remaining values back at the same key
+				d.tree.Insert(deco.Start, deco.End, nodeValues...)
+			}
+
 			deco.clear(d.src)
 		}
 	}
