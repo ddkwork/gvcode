@@ -358,6 +358,12 @@ func (e *TextView) SetFoldManager(fm *folding.Manager) {
 	}
 }
 
+// SetColorOffsets sets the color offsets for the text layout.
+func (e *TextView) SetColorOffsets(offsets map[int]map[int]int) {
+	e.layouter.SetColorOffsets(offsets)
+	e.invalidate()
+}
+
 // FoldManager returns the current folding manager.
 func (e *TextView) FoldManager() *folding.Manager {
 	return e.foldManager

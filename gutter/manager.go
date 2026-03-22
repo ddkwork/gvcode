@@ -191,7 +191,6 @@ func (m *Manager) Update(gtx layout.Context) (GutterEvent, bool) {
 func (m *Manager) handleClick(gtx layout.Context, evt gesture.ClickEvent) {
 	pos := image.Point{X: int(evt.Position.X), Y: int(evt.Position.Y)}
 
-	// Find which provider was clicked
 	for _, p := range m.providers {
 		bounds, ok := m.providerBounds[p.ID()]
 		if !ok {
@@ -199,13 +198,11 @@ func (m *Manager) handleClick(gtx layout.Context, evt gesture.ClickEvent) {
 		}
 
 		if pos.In(bounds) {
-			// Calculate which line was clicked
 			line := m.hitTestLine(pos.Y)
 			if line < 0 {
 				continue
 			}
 
-			// Check if provider is interactive
 			if interactive, ok := p.(InteractiveGutter); ok {
 				if interactive.HandleClick(line, evt.Source, evt.NumClicks, evt.Modifiers) {
 					m.pending = append(m.pending, GutterClickEvent{
@@ -218,7 +215,6 @@ func (m *Manager) handleClick(gtx layout.Context, evt gesture.ClickEvent) {
 					return
 				}
 			} else {
-				// Non-interactive provider, still emit event
 				m.pending = append(m.pending, GutterClickEvent{
 					ProviderID: p.ID(),
 					Line:       line,

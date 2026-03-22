@@ -256,6 +256,30 @@ func WithCodeFolding() EditorOption {
 func WithColumnEdit() EditorOption {
 	return func(e *Editor) {
 		e.initBuffer()
-		e.SetColumnEditMode(true)
+		// Don't enable column mode by default - wait for user to press Alt+C
+		// e.SetColumnEditMode(true)
+	}
+}
+
+// WithColorIndicators enables color indicators in the gutter.
+// Color indicators show color swatches next to detected color values in code.
+// Hovering over a color indicator automatically opens the color picker.
+func WithColorIndicators() EditorOption {
+	return func(e *Editor) {
+		e.initBuffer()
+		if e.gutterManager == nil {
+			e.gutterManager = gutter.NewManager()
+		}
+		// Check if color indicator provider already exists
+		hasColorIndicator := false
+		for _, p := range e.gutterManager.Providers() {
+			if p.ID() == providers.ColorIndicatorProviderID {
+				hasColorIndicator = true
+				break
+			}
+		}
+		if !hasColorIndicator {
+			e.gutterManager.Register(providers.NewColorIndicatorProvider())
+		}
 	}
 }

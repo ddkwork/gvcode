@@ -41,12 +41,6 @@ const (
 
 // RunButtonProvider renders run buttons for main and test functions in the gutter.
 type RunButtonProvider struct {
-	// clicker handles click events on buttons.
-	clicker gesture.Click
-
-	// pending holds run events that haven't been consumed yet.
-	pending []RunButtonEvent
-
 	// paragraphs caches the visible paragraphs from the last Layout call.
 	paragraphs []gutter.Paragraph
 
@@ -61,6 +55,12 @@ type RunButtonProvider struct {
 
 	// viewport caches the viewport from the last Layout call.
 	viewport image.Rectangle
+
+	// clicker handles click events on buttons.
+	clicker gesture.Click
+
+	// pending holds run button events that haven't been consumed yet.
+	pending []RunButtonEvent
 }
 
 // NewRunButtonProvider creates a new run button provider with default settings.
@@ -69,6 +69,7 @@ func NewRunButtonProvider() *RunButtonProvider {
 		buttonTypes: make(map[int]RunButtonType),
 		buttonTexts: make(map[int]string),
 		paragraphs:  make([]gutter.Paragraph, 0),
+		pending:     make([]RunButtonEvent, 0),
 	}
 }
 
@@ -182,6 +183,30 @@ func (p *RunButtonProvider) Layout(gtx layout.Context, ctx gutter.GutterContext)
 		m.Stop().Add(gtx.Ops)
 	}
 
+	// Process click events
+	for {
+		evt, ok := p.clicker.Update(gtx.Source)
+		if !ok {
+			break
+		}
+		if evt.Kind == gesture.KindClick {
+			// Find which line was clicked
+			clickY := int(evt.Position.Y) + ctx.Viewport.Min.Y
+			line := p.hitTestLine(clickY)
+
+			if line >= 0 {
+				btnType, hasButton := p.buttonTypes[line]
+				if hasButton && btnType != RunButtonNone {
+					p.pending = append(p.pending, RunButtonEvent{
+						ButtonType: btnType,
+						Line:       line,
+						ButtonText: p.buttonTexts[line],
+					})
+				}
+			}
+		}
+	}
+
 	return layout.Dimensions{Size: image.Pt(buttonSizePx, 0)}
 }
 
@@ -219,6 +244,28 @@ func (p *RunButtonProvider) HandleHover(line int) *gutter.HoverInfo {
 	return &gutter.HoverInfo{
 		Text: text,
 	}
+}
+
+// GetPendingEvents returns pending run button events and clears the pending list.
+func (p *RunButtonProvider) GetPendingEvents() []RunButtonEvent {
+	events := p.pending
+	p.pending = p.pending[:0]
+	return events
+}
+
+// hitTestLine determines which logical line corresponds to a Y coordinate.
+func (p *RunButtonProvider) hitTestLine(y int) int {
+	if len(p.paragraphs) == 0 {
+		return -1
+	}
+
+	for _, para := range p.paragraphs {
+		if y >= para.StartY && y <= para.EndY {
+			return para.Index
+		}
+	}
+
+	return -1
 }
 
 // analyzeLines analyzes line contents to determine if they should have run buttons.
@@ -282,13 +329,6 @@ func trimSpace(s string) string {
 		end--
 	}
 	return s[start:end]
-}
-
-// GetPendingEvents returns pending run button events and clears the pending list.
-func (p *RunButtonProvider) GetPendingEvents() []RunButtonEvent {
-	events := p.pending
-	p.pending = p.pending[:0]
-	return events
 }
 
 // RunButtonEvent represents a click event on a run button.

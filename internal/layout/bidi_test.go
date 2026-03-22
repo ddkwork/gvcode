@@ -160,7 +160,7 @@ func TestBidiGlyphOrder(t *testing.T) {
 	line := lines[0]
 
 	// After recompute, verify glyphs are properly positioned
-	line.recompute(fixed.I(0), 0)
+	line.recompute(fixed.I(0), 0, nil)
 
 	// Check that we have the expected number of glyphs (accounting for cluster breaks)
 	if len(line.Glyphs) == 0 {
@@ -181,7 +181,7 @@ func TestEmptyLineRecompute(t *testing.T) {
 	line := Line{}
 
 	// Should not panic on empty line
-	line.recompute(fixed.I(100), 0)
+	line.recompute(fixed.I(100), 0, nil)
 
 	if line.RuneOff != 0 {
 		t.Errorf("RuneOff should be 0, got %d", line.RuneOff)
@@ -211,7 +211,7 @@ func TestRecomputeLTROnly(t *testing.T) {
 	}
 
 	alignOff := fixed.I(5)
-	line.recompute(alignOff, 100)
+	line.recompute(alignOff, 100, nil)
 
 	// Verify RuneOff is set
 	if line.RuneOff != 100 {
@@ -248,7 +248,7 @@ func TestRecomputeRTLOnly(t *testing.T) {
 	}
 
 	alignOff := fixed.I(0)
-	line.recompute(alignOff, 0)
+	line.recompute(alignOff, 0, nil)
 
 	// For RTL run with total width 45:
 	// - Run occupies [0, 45)
@@ -286,7 +286,7 @@ func TestRecomputeMixedLTRThenRTL(t *testing.T) {
 	}
 
 	alignOff := fixed.I(0)
-	line.recompute(alignOff, 0)
+	line.recompute(alignOff, 0, nil)
 
 	// LTR run [0,1]: width=20, occupies [0, 20)
 	// - Glyph 0: X = 0
@@ -320,7 +320,7 @@ func TestRecomputeMixedRTLThenLTR(t *testing.T) {
 	}
 
 	alignOff := fixed.I(0)
-	line.recompute(alignOff, 0)
+	line.recompute(alignOff, 0, nil)
 
 	// RTL run [0,1]: width=20, occupies [0, 20)
 	// - Glyph 0: X = 20 - 10 = 10
@@ -352,7 +352,7 @@ func TestRecomputeWithAlignmentOffset(t *testing.T) {
 	}
 
 	alignOff := fixed.I(100)
-	line.recompute(alignOff, 0)
+	line.recompute(alignOff, 0, nil)
 
 	expectedX := []fixed.Int26_6{
 		fixed.I(100), // alignOff
@@ -377,7 +377,7 @@ func TestRecomputeWithTabLikeAdvance(t *testing.T) {
 	}
 
 	alignOff := fixed.I(0)
-	line.recompute(alignOff, 0)
+	line.recompute(alignOff, 0, nil)
 
 	expectedX := []fixed.Int26_6{
 		fixed.I(0),  // first char
@@ -397,7 +397,7 @@ func TestRecomputeSingleGlyph(t *testing.T) {
 		line := Line{
 			Glyphs: []*text.Glyph{makeGlyph(10, false)},
 		}
-		line.recompute(fixed.I(5), 42)
+		line.recompute(fixed.I(5), 42, nil)
 
 		if line.Glyphs[0].X != fixed.I(5) {
 			t.Errorf("X = %d, want %d", line.Glyphs[0].X, fixed.I(5))
@@ -414,7 +414,7 @@ func TestRecomputeSingleGlyph(t *testing.T) {
 		line := Line{
 			Glyphs: []*text.Glyph{makeGlyph(10, true)},
 		}
-		line.recompute(fixed.I(0), 0)
+		line.recompute(fixed.I(0), 0, nil)
 
 		// RTL single glyph: run width=10, X = 0 + 10 - 10 = 0
 		if line.Glyphs[0].X != fixed.I(0) {
@@ -437,7 +437,7 @@ func TestRecomputeAlternatingDirections(t *testing.T) {
 	}
 
 	alignOff := fixed.I(0)
-	line.recompute(alignOff, 0)
+	line.recompute(alignOff, 0, nil)
 
 	// LTR run [0]: width=10, occupies [0, 10)
 	// - Glyph 0: X = 0
@@ -493,7 +493,7 @@ func TestRecomputeTotalWidth(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			line := Line{Glyphs: tc.glyphs}
-			line.recompute(fixed.I(0), 0)
+			line.recompute(fixed.I(0), 0, nil)
 
 			// Calculate expected total width
 			totalAdvance := fixed.I(0)
