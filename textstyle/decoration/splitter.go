@@ -93,7 +93,6 @@ func (rb *decorationLineSplitter) Split(line layout.Line, decorations *Decoratio
 			rb.commitLast(runs)
 		}
 	}
-
 }
 
 func (rb *decorationLineSplitter) readToRun(line layout.Line, start, end int) error {

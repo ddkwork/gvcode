@@ -106,7 +106,6 @@ func (l *RichTextLabel) Layout(gtx layout.Context) layout.Dimensions {
 }
 
 func (l *RichTextLabel) Update(gtx layout.Context) {
-
 }
 
 func Label(th *material.Theme, size unit.Sp, txt string) RichTextLabel {

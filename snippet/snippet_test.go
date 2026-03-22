@@ -43,5 +43,4 @@ func TestSnippetParse(t *testing.T) {
 		t.Logf("wrong tabstop: %v", ts)
 		t.Fail()
 	}
-
 }

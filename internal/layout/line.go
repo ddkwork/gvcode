@@ -43,7 +43,6 @@ func (li *Line) append(glyphs ...text.Glyph) {
 		li.Runes += int(gl.Runes)
 		li.Glyphs = append(li.Glyphs, &gl)
 	}
-
 }
 
 // recompute re-computes X position for Bidi text by processing runs of direction.

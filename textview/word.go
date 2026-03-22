@@ -23,7 +23,6 @@ func (e *TextView) IsWordSeperator(r rune) bool {
 	}
 
 	return strings.ContainsRune(seperators, r) || unicode.IsSpace(r)
-
 }
 
 // MoveWord moves the caret to the next few words in the specified direction.
@@ -220,7 +219,7 @@ func (e *TextView) FindAllTextOccurrences(start, end int) [][2]int {
 	if start == end {
 		return nil
 	}
-	
+
 	if start > end {
 		start, end = end, start
 	}

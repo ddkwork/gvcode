@@ -5,11 +5,11 @@ import "testing"
 func TestBoundaryPieceRangeSwap(t *testing.T) {
 	list := newPieceList()
 	old, _, _ := list.FindPiece(0)
-	//t.Errorf("old: %p, prev: %p", old, old.prev)
+	// t.Errorf("old: %p, prev: %p", old, old.prev)
 
 	rng := &pieceRange{}
 	rng.AsBoundary(old)
-	//t.Logf("rng.first: %p, prev: %p, rng.last: %p, ", rng.first, old.prev, rng.last)
+	// t.Logf("rng.first: %p, prev: %p, rng.last: %p, ", rng.first, old.prev, rng.last)
 
 	if rng.first != old.prev || rng.last != old {
 		t.Error("set boundary range failed")
@@ -36,7 +36,6 @@ func TestBoundaryPieceRangeSwap(t *testing.T) {
 	if rng.first != oldPrev || rng.last != old {
 		t.Errorf("swap boundary range failed: exptected: [first: %p, last: %p], actual: [first: %p, last: %p]", oldPrev, old, rng.first, rng.last)
 	}
-
 }
 
 func TestNormalToBoundaryPieceRangeSwap(t *testing.T) {
@@ -69,7 +68,6 @@ func TestNormalToBoundaryPieceRangeSwap(t *testing.T) {
 	if rng.first.prev.next != rng.last.next || rng.last.next.prev != rng.first.prev {
 		t.Errorf("invalid boundary range")
 	}
-
 }
 
 func TestNormalToNormalPieceRangeSwap(t *testing.T) {
@@ -85,7 +83,7 @@ func TestNormalToNormalPieceRangeSwap(t *testing.T) {
 
 	rng := &pieceRange{}
 	rng.Append(old)
-	//t.Logf("rng.first: %p, prev: %p, rng.last: %p, ", rng.first, old.prev, rng.last)
+	// t.Logf("rng.first: %p, prev: %p, rng.last: %p, ", rng.first, old.prev, rng.last)
 
 	if rng.first != old || rng.last != old {
 		t.Error("set range failed")
@@ -116,5 +114,4 @@ func TestNormalToNormalPieceRangeSwap(t *testing.T) {
 	if rng.first.prev.next != newRng.first || rng.last.next.prev != newRng.last {
 		t.Errorf("invalid boundary range")
 	}
-
 }

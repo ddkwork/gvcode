@@ -221,7 +221,6 @@ func (tl *TextLayout) indexGraphemeClusters(paragraph []rune, runeOffset int) {
 		grapheme := iter.Grapheme()
 		tl.Graphemes = append(tl.Graphemes, runeOffset+grapheme.Offset+len(grapheme.Text))
 	}
-
 }
 
 func (tl *TextLayout) updateBounds(line Line) {
@@ -354,7 +353,6 @@ func (tl *TextLayout) indexGlyphs(idx int, line Line) {
 			pos.RunIndex++
 		}
 	}
-
 }
 
 // This method and some of the following methods are adapted from the Gio's package gioui.org/widget.

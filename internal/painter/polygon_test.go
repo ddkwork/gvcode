@@ -284,6 +284,7 @@ func TestCornersToRound(t *testing.T) {
 		})
 	}
 }
+
 func TestPolygonGroupsForRects(t *testing.T) {
 	tests := []struct {
 		name           string
