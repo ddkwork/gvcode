@@ -147,7 +147,7 @@ func (e *TextView) FindAllWordOccurrences(start, end int, bySpace bool) [][2]int
 	wordLen := end - start
 	// Read the target word runes for comparison
 	targetWord := make([]rune, wordLen)
-	for i := 0; i < wordLen; i++ {
+	for i := range wordLen {
 		r, err := e.src.ReadRuneAt(start + i)
 		if err != nil {
 			// Should not happen if start/end are valid, but bail out
@@ -227,7 +227,7 @@ func (e *TextView) FindAllTextOccurrences(start, end int) [][2]int {
 	textLen := end - start
 	// Read the target text runes for comparison
 	targetText := make([]rune, textLen)
-	for i := 0; i < textLen; i++ {
+	for i := range textLen {
 		r, err := e.src.ReadRuneAt(start + i)
 		if err != nil {
 			// Should not happen if start/end are valid, but bail out

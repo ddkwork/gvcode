@@ -351,7 +351,7 @@ func fixedToFloat(i fixed.Int26_6) float32 {
 	return float32(i) / 64.0
 }
 
-func isNil(i interface{}) bool {
+func isNil(i any) bool {
 	if i == nil {
 		return true
 	}
