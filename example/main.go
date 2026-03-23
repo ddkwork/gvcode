@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"image"
 	"image/color"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"testing"
 
 	"gioui.org/app"
 	"gioui.org/io/key"
@@ -21,11 +23,103 @@ import (
 	"github.com/oligo/gvcode"
 	"github.com/oligo/gvcode/addons/completion"
 	gvcolor "github.com/oligo/gvcode/color"
+	"github.com/oligo/gvcode/gutter"
 
 	// "github.com/oligo/gvcode/textstyle/decoration"
 	"github.com/oligo/gvcode/textstyle/syntax"
 	wg "github.com/oligo/gvcode/widget"
 )
+
+//go:embed main.go
+var embeddedMain string
+
+// Example function to demonstrate run button
+func HelloWorld() {
+	fmt.Println("Hello, World!")
+}
+
+// TestExample demonstrates the test run button in gutter
+func TestExample(t *testing.T) {
+	HelloWorld()
+	// TODO: Add actual test assertions
+}
+
+// TestRunButtons tests the run button functionality
+func TestRunButtons(t *testing.T) {
+	fmt.Println("Testing run buttons...")
+	// TODO: Add actual test logic
+}
+
+func main() {
+	log.SetFlags(log.Flags() | log.Lshortfile)
+	th := material.NewTheme()
+
+	editorApp := EditorApp{
+		window: &app.Window{},
+		th:     th,
+	}
+	editorApp.window.Option(app.Title("gvcode demo"))
+
+	gvcode.SetDebug(false)
+	editorApp.state = wg.NewEditor(th)
+
+	editorApp.state.SetText(embeddedMain)
+
+	// Setting up auto-completion.
+	cm := &completion.DefaultCompletion{Editor: editorApp.state}
+
+	// set popup widget to let user navigate the candidates.
+	popup := completion.NewCompletionPopup(editorApp.state, cm)
+	popup.Theme = th
+	popup.TextSize = unit.Sp(12)
+
+	cm.AddCompletor(&goCompletor{editor: editorApp.state}, popup)
+
+	// color scheme
+	colorScheme := syntax.ColorScheme{}
+	colorScheme.Foreground = gvcolor.MakeColor(th.Fg)
+	colorScheme.SelectColor = gvcolor.MakeColor(th.ContrastBg).MulAlpha(0x60)
+	colorScheme.LineColor = gvcolor.MakeColor(th.ContrastBg).MulAlpha(0x30)
+	colorScheme.LineNumberColor = gvcolor.MakeColor(th.ContrastBg).MulAlpha(0xb6)
+	keywordColor, _ := gvcolor.Hex2Color("#AF00DB")
+	colorScheme.AddStyle("keyword", syntax.Underline, keywordColor, gvcolor.Color{})
+
+	editorApp.state.WithOptions(
+		gvcode.WrapLine(true),
+		gvcode.WithAutoCompletion(cm),
+		gvcode.WithColorScheme(colorScheme),
+		gvcode.WithCornerRadius(unit.Dp(4)),
+	)
+	editorApp.state.WithOptions(gvcode.WithDefaultGutters(), gvcode.WithRunButtons(), gvcode.WithGutterGap(unit.Dp(12)))
+
+	tokens := HightlightTextByPattern(editorApp.state.Text(), syntaxPattern)
+	editorApp.state.SetSyntaxTokens(tokens...)
+
+	// highlightColor, _ := gvcolor.Hex2Color("#e74c3c50")
+	// highlightColor2, _ := gvcolor.Hex2Color("#f1c40f50")
+	// highlightColor3, _ := gvcolor.Hex2Color("#e74c3c")
+
+	// err := editorApp.state.AddDecorations(
+	// 	decoration.Decoration{Source: "test", Start: 5, End: 150, Background: &decoration.Background{Color: highlightColor}},
+	// 	decoration.Decoration{Source: "test", Start: 100, End: 200, Background: &decoration.Background{Color: highlightColor2}},
+	// 	decoration.Decoration{Source: "test", Start: 100, End: 200, Squiggle: &decoration.Squiggle{Color: highlightColor3}},
+	// 	decoration.Decoration{Source: "test", Start: 250, End: 400, Strikethrough: &decoration.Strikethrough{Color: highlightColor3}},
+	// )
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	go func() {
+		err := editorApp.run()
+		if err != nil {
+			os.Exit(1)
+		}
+
+		os.Exit(0)
+	}()
+
+	app.Main()
+}
 
 type (
 	C = layout.Context
@@ -67,13 +161,20 @@ func (ed *EditorApp) layout(gtx C, th *material.Theme) D {
 			break
 		}
 
-		switch evt.(type) {
+		switch evt := evt.(type) {
 		case gvcode.ChangeEvent:
 			tokens := HightlightTextByPattern(ed.state.Text(), syntaxPattern)
 			ed.state.SetSyntaxTokens(tokens...)
 			// May also need to sync the editor content to the completion engine before
 			// calling OnTextEdit.
 			ed.state.OnTextEdit()
+		case gvcode.RunButtonEventWrapper:
+			// Handle run button clicks
+			if evt.Event.ButtonType == gutter.RunButtonMain {
+				fmt.Printf("Run main function at line %d: %s\n", evt.Event.Line+1, evt.Event.ButtonText)
+			} else if evt.Event.ButtonType == gutter.RunButtonTest {
+				fmt.Printf("Run test function at line %d: %s\n", evt.Event.Line+1, evt.Event.ButtonText)
+			}
 		}
 	}
 
@@ -156,78 +257,6 @@ func makeScrollbar(th *material.Theme, scroll *widget.Scrollbar, color color.NRG
 	bar.Track.MajorPadding = unit.Dp(0)
 	bar.Track.MinorPadding = unit.Dp(1)
 	return bar
-}
-
-func main() {
-	log.SetFlags(log.Flags() | log.Lshortfile)
-	th := material.NewTheme()
-
-	editorApp := EditorApp{
-		window: &app.Window{},
-		th:     th,
-	}
-	editorApp.window.Option(app.Title("gvcode demo"))
-
-	gvcode.SetDebug(false)
-	editorApp.state = wg.NewEditor(th)
-
-	thisFile, _ := os.ReadFile("./main.go")
-	editorApp.state.SetText(string(thisFile))
-
-	// Setting up auto-completion.
-	cm := &completion.DefaultCompletion{Editor: editorApp.state}
-
-	// set popup widget to let user navigate the candidates.
-	popup := completion.NewCompletionPopup(editorApp.state, cm)
-	popup.Theme = th
-	popup.TextSize = unit.Sp(12)
-
-	cm.AddCompletor(&goCompletor{editor: editorApp.state}, popup)
-
-	// color scheme
-	colorScheme := syntax.ColorScheme{}
-	colorScheme.Foreground = gvcolor.MakeColor(th.Fg)
-	colorScheme.SelectColor = gvcolor.MakeColor(th.ContrastBg).MulAlpha(0x60)
-	colorScheme.LineColor = gvcolor.MakeColor(th.ContrastBg).MulAlpha(0x30)
-	colorScheme.LineNumberColor = gvcolor.MakeColor(th.ContrastBg).MulAlpha(0xb6)
-	keywordColor, _ := gvcolor.Hex2Color("#AF00DB")
-	colorScheme.AddStyle("keyword", syntax.Underline, keywordColor, gvcolor.Color{})
-
-	editorApp.state.WithOptions(
-		gvcode.WrapLine(true),
-		gvcode.WithAutoCompletion(cm),
-		gvcode.WithColorScheme(colorScheme),
-		gvcode.WithCornerRadius(unit.Dp(4)),
-	)
-	editorApp.state.WithOptions(gvcode.WithDefaultGutters(), gvcode.WithGutterGap(unit.Dp(12)))
-
-	tokens := HightlightTextByPattern(editorApp.state.Text(), syntaxPattern)
-	editorApp.state.SetSyntaxTokens(tokens...)
-
-	// highlightColor, _ := gvcolor.Hex2Color("#e74c3c50")
-	// highlightColor2, _ := gvcolor.Hex2Color("#f1c40f50")
-	// highlightColor3, _ := gvcolor.Hex2Color("#e74c3c")
-
-	// err := editorApp.state.AddDecorations(
-	// 	decoration.Decoration{Source: "test", Start: 5, End: 150, Background: &decoration.Background{Color: highlightColor}},
-	// 	decoration.Decoration{Source: "test", Start: 100, End: 200, Background: &decoration.Background{Color: highlightColor2}},
-	// 	decoration.Decoration{Source: "test", Start: 100, End: 200, Squiggle: &decoration.Squiggle{Color: highlightColor3}},
-	// 	decoration.Decoration{Source: "test", Start: 250, End: 400, Strikethrough: &decoration.Strikethrough{Color: highlightColor3}},
-	// )
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	go func() {
-		err := editorApp.run()
-		if err != nil {
-			os.Exit(1)
-		}
-
-		os.Exit(0)
-	}()
-
-	app.Main()
 }
 
 func HightlightTextByPattern(text string, pattern string) []syntax.Token {
