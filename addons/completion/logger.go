@@ -20,7 +20,6 @@ func init() {
 	// Create a new logger with the specified options
 	// Use NewJSONHandler or NewTextHandler as needed
 	logger = slog.New(slog.NewTextHandler(os.Stdout, handlerOptions)).WithGroup(logGroup)
-
 }
 
 func SetLogger(log *slog.Logger) {

@@ -97,7 +97,6 @@ func (e *TextView) selectedParagraphs() (_ []lt.Paragraph, startIdx int) {
 	}
 
 	return selections, startIdx
-
 }
 
 // SelectedLineRange returns the start and end rune index of the paragraphs selected by the caret.

@@ -223,7 +223,6 @@ func (e *Editor) Layout(gtx layout.Context, lt *text.Shaper) layout.Dimensions {
 			return dims
 		}),
 	)
-
 }
 
 func (e *Editor) layout(gtx layout.Context) layout.Dimensions {
@@ -231,7 +230,7 @@ func (e *Editor) layout(gtx layout.Context) layout.Dimensions {
 	pointer.CursorText.Add(gtx.Ops)
 	event.Op(gtx.Ops, e)
 
-	//e.scroller.Add(gtx.Ops)
+	// e.scroller.Add(gtx.Ops)
 
 	e.clicker.Add(gtx.Ops)
 	e.dragger.Add(gtx.Ops)

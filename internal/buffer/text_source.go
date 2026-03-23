@@ -60,6 +60,6 @@ type TextSource interface {
 type TextReader interface {
 	io.Seeker
 	io.Reader
-	//ReadAll returns the contents of the editor.
+	// ReadAll returns the contents of the editor.
 	ReadAll(buf []byte) []byte
 }

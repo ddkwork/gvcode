@@ -366,7 +366,6 @@ func (e *Editor) onTab(k key.Event) EditorEvent {
 	}
 
 	return nil
-
 }
 
 func (e *Editor) onTextInput(ke key.EditEvent) {
@@ -442,7 +441,6 @@ func (e *Editor) onTextInput(ke key.EditEvent) {
 	// a tabstop.
 	finalStart, finalEnd := e.Selection()
 	e.snippetCtx.OnInsertAt(finalStart, finalEnd)
-
 }
 
 func (e *Editor) isNearWordChar(runeOff int, backward bool) bool {
@@ -457,7 +455,6 @@ func (e *Editor) isNearWordChar(runeOff int, backward bool) bool {
 	}
 
 	return false
-
 }
 
 func (e *Editor) cancelCompletor() {
@@ -603,5 +600,4 @@ func (e *Editor) onDeleteBackward() {
 			}
 		}
 	}
-
 }
