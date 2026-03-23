@@ -33,9 +33,103 @@ import (
 //go:embed main.go
 var embeddedMain string
 
+// Color test content for demonstration
+var colorTestContent = `package main
+
+import (
+	"image/color"
+)
+
+// Color constants for testing
+const (
+	// Hex colors
+	ColorRed    = "#FF0000"
+	ColorGreen  = "#00FF00"
+	ColorBlue   = "#0000FF"
+	ColorYellow = "#FFFF00"
+	ColorPurple = "#800080"
+	ColorOrange = "#FFA500"
+	ColorCyan   = "#00FFFF"
+	ColorPink   = "#FFC0CB"
+	ColorBrown  = "#A52A2A"
+	ColorGray   = "#808080"
+
+	// RGB colors
+	ColorRGBRed   = "rgb(255, 0, 0)"
+	ColorRGBGreen = "rgb(0, 255, 0)"
+	ColorRGBBlue  = "rgb(0, 0, 255)"
+
+	// HSL colors
+	ColorHSLRed   = "hsl(0, 100%, 50%)"
+	ColorHSLGreen = "hsl(120, 100%, 50%)"
+	ColorHSLBlue  = "hsl(240, 100%, 50%)"
+)
+
+// Test line with multiple colors
+var testColors = "#FF0000 #00FF00 #0000FF #FFFF00 #800080 #FFA500"
+
+// Color variables for testing
+var (
+	// Hex colors
+	HexRed    = "#FF0000"
+	HexGreen  = "#00FF00"
+	HexBlue   = "#0000FF"
+	HexYellow = "#FFFF00"
+	HexPurple = "#800080"
+	HexOrange = "#FFA500"
+	HexCyan   = "#00FFFF"
+	HexPink   = "#FFC0CB"
+	HexBrown  = "#A52A2A"
+	HexGray   = "#808080"
+
+	// RGB colors
+	RGBRed   = "rgb(255, 0, 0)"
+	RGBGreen = "rgb(0, 255, 0)"
+	RGBBlue  = "rgb(0, 0, 255)"
+
+	// HSL colors
+	HSLRed   = "hsl(0, 100%, 50%)"
+	HSLGreen = "hsl(120, 100%, 50%)"
+	HSLBlue  = "hsl(240, 100%, 50%)"
+)
+`
+
+// Color constants for demonstration
+const (
+	ColorRed    = "#FF0000"
+	ColorGreen  = "#00FF00"
+	ColorBlue   = "#0000FF"
+	ColorYellow = "#FFFF00"
+	ColorPurple = "#800080"
+	ColorOrange = "#FFA500"
+	ColorCyan   = "#00FFFF"
+	ColorPink   = "#FFC0CB"
+	ColorBrown  = "#A52A2A"
+	ColorGray   = "#808080"
+)
+
+// RGB color values for demonstration
+var (
+	ColorRGBRed   = color.RGBA{R: 255, G: 0, B: 0, A: 255}
+	ColorRGBGreen = color.RGBA{R: 0, G: 255, B: 0, A: 255}
+	ColorRGBBlue  = color.RGBA{R: 0, G: 0, B: 255, A: 255}
+)
+
+// HSL color values for demonstration
+var (
+	ColorHSLRed   = "hsl(0, 100%, 50%)"
+	ColorHSLGreen = "hsl(120, 100%, 50%)"
+	ColorHSLBlue  = "hsl(240, 100%, 50%)"
+)
+
 // Example function to demonstrate run button
 func HelloWorld() {
 	fmt.Println("Hello, World!")
+	fmt.Printf("Red color: %s\n", ColorRed)
+	fmt.Printf("Green color: %s\n", ColorGreen)
+	fmt.Printf("Blue color: %s\n", ColorBlue)
+	fmt.Printf("RGB Red: %+v\n", ColorRGBRed)
+	fmt.Printf("HSL Red: %s\n", ColorHSLRed)
 }
 
 // TestExample demonstrates the test run button in gutter
@@ -63,7 +157,7 @@ func main() {
 	gvcode.SetDebug(false)
 	editorApp.state = wg.NewEditor(th)
 
-	editorApp.state.SetText(embeddedMain)
+	editorApp.state.SetText(colorTestContent)
 
 	// Setting up auto-completion.
 	cm := &completion.DefaultCompletion{Editor: editorApp.state}
@@ -95,7 +189,28 @@ func main() {
 		gvcode.WithStickyLines(),            // 粘性行
 		gvcode.WithCodeFolding(),            // 代码折叠
 		gvcode.WithColumnEdit(),             // 列编辑模式
+		gvcode.WithColorIndicators(),        // 颜色指示器
 	)
+
+	// Set color change callback to update editor text
+	if colorPickerProvider := editorApp.state.GetGutterManager().GetProvider("colorindicator"); colorPickerProvider != nil {
+		if provider, ok := colorPickerProvider.(interface {
+			GetEditorColorPicker() interface {
+				SetOnColorChange(func(oldText, newText string, start, end int))
+			}
+		}); ok {
+			editorColorPicker := provider.GetEditorColorPicker()
+			editorColorPicker.SetOnColorChange(func(oldText, newText string, start, end int) {
+				currentText := editorApp.state.Text()
+				if start >= 0 && end <= len(currentText) && start <= end {
+					newText := currentText[:start] + newText + currentText[end:]
+					editorApp.state.SetText(newText)
+					tokens := HightlightTextByPattern(editorApp.state.Text(), syntaxPattern)
+					editorApp.state.SetSyntaxTokens(tokens...)
+				}
+			})
+		}
+	}
 
 	tokens := HightlightTextByPattern(editorApp.state.Text(), syntaxPattern)
 	editorApp.state.SetSyntaxTokens(tokens...)

@@ -21,6 +21,9 @@ type Line struct {
 	Runes int
 	// runeOff tracks the rune offset of the first rune of the line in the document.
 	RuneOff int
+	// OriginalGlyphPositions stores the original glyph positions before color offsets were applied.
+	// This is used by color indicators to determine where to render the indicators.
+	OriginalGlyphPositions []fixed.Int26_6
 }
 
 func (li Line) String() string {
@@ -46,25 +49,30 @@ func (li *Line) append(glyphs ...text.Glyph) {
 }
 
 // recompute re-computes X position for Bidi text by processing runs of direction.
-func (li *Line) recompute(alignOff fixed.Int26_6, runeOff int) {
+// colorOffsets is a map from character position to additional pixel offset.
+func (li *Line) recompute(alignOff fixed.Int26_6, runeOff int, colorOffsets map[int]int) {
 	if len(li.Glyphs) == 0 {
 		li.RuneOff = runeOff
 		return
 	}
+
+	// Tracks the current character position in the line
+	charPos := 0
+	// Tracks the accumulated color indicator offset
+	colorOffset := fixed.I(0)
 
 	// Tracks the start X of the current run relative to the line start
 	xOff := fixed.I(0)
 	// Index of the first glyph in the current run
 	runStart := 0
 
+	// First pass: compute positions WITHOUT color offsets
+	// This will give us the original glyph positions
 	for i := 0; i <= len(li.Glyphs); i++ {
-		// Determine if the current run has ended (end of line or direction change)
 		endOfRun := false
 		if i == len(li.Glyphs) {
 			endOfRun = true
 		} else {
-			// Check if direction changes compared to the start of the run
-			// Gio uses FlagTowardOrigin to indicate RTL direction
 			currentDir := li.Glyphs[i].Flags & text.FlagTowardOrigin
 			startDir := li.Glyphs[runStart].Flags & text.FlagTowardOrigin
 			if currentDir != startDir {
@@ -73,49 +81,104 @@ func (li *Line) recompute(alignOff fixed.Int26_6, runeOff int) {
 		}
 
 		if endOfRun {
-			// Calculate the total width of this specific run
 			runWidth := fixed.I(0)
 			for j := runStart; j < i; j++ {
 				runWidth += li.Glyphs[j].Advance
 			}
 
-			// Layout the glyphs within this run based on direction
 			isRTL := (li.Glyphs[runStart].Flags & text.FlagTowardOrigin) == text.FlagTowardOrigin
 
 			if isRTL {
-				// RTL Run: Layout Right-to-Left (assuming Logical Order input)
-				// The run occupies space from [xOff] to [xOff + runWidth]
-				// We start the cursor at the RIGHT edge and subtract advances.
 				cursor := alignOff + xOff + runWidth
 				for j := runStart; j < i; j++ {
 					cursor -= li.Glyphs[j].Advance
 					li.Glyphs[j].X = cursor
-
-					// Ensure the last glyph in the line gets the break flag
+					charPos += int(li.Glyphs[j].Runes)
 					if j == len(li.Glyphs)-1 {
 						li.Glyphs[j].Flags |= text.FlagLineBreak
 					}
 				}
 			} else {
-				// LTR Run: Layout Left-to-Right
-				// We start the cursor at the LEFT edge (xOff) and add advances.
 				cursor := alignOff + xOff
 				for j := runStart; j < i; j++ {
 					li.Glyphs[j].X = cursor
 					cursor += li.Glyphs[j].Advance
-
+					charPos += int(li.Glyphs[j].Runes)
 					if j == len(li.Glyphs)-1 {
 						li.Glyphs[j].Flags |= text.FlagLineBreak
 					}
 				}
 			}
 
-			// Advance the global line offset by the run's width
 			xOff += runWidth
 			runStart = i
 		}
 	}
 
+	// Save original glyph positions (without color offsets)
+	li.OriginalGlyphPositions = make([]fixed.Int26_6, len(li.Glyphs))
+	for i, glyph := range li.Glyphs {
+		li.OriginalGlyphPositions[i] = glyph.X
+	}
+
+	// Second pass: apply color offsets
+	// Reset character position for second pass
+	charPos = 0
+	colorOffset = fixed.I(0)
+	xOff = fixed.I(0)
+	runStart = 0
+
+	for i := 0; i <= len(li.Glyphs); i++ {
+		endOfRun := false
+		if i == len(li.Glyphs) {
+			endOfRun = true
+		} else {
+			currentDir := li.Glyphs[i].Flags & text.FlagTowardOrigin
+			startDir := li.Glyphs[runStart].Flags & text.FlagTowardOrigin
+			if currentDir != startDir {
+				endOfRun = true
+			}
+		}
+
+		if endOfRun {
+			runWidth := fixed.I(0)
+			for j := runStart; j < i; j++ {
+				runWidth += li.Glyphs[j].Advance
+			}
+
+			isRTL := (li.Glyphs[runStart].Flags & text.FlagTowardOrigin) == text.FlagTowardOrigin
+
+			if isRTL {
+				cursor := alignOff + xOff + runWidth
+				for j := runStart; j < i; j++ {
+					if offset, hasOffset := colorOffsets[charPos]; hasOffset {
+						colorOffset += fixed.I(offset)
+					}
+
+					cursor -= li.Glyphs[j].Advance
+					li.Glyphs[j].X = cursor + colorOffset
+					charPos += int(li.Glyphs[j].Runes)
+				}
+			} else {
+				cursor := alignOff + xOff
+				for j := runStart; j < i; j++ {
+					if offset, hasOffset := colorOffsets[charPos]; hasOffset {
+						colorOffset += fixed.I(offset)
+					}
+
+					li.Glyphs[j].X = cursor + colorOffset
+					cursor += li.Glyphs[j].Advance
+					charPos += int(li.Glyphs[j].Runes)
+				}
+			}
+
+			xOff += runWidth
+			runStart = i
+		}
+	}
+
+	// Update line width to include color indicator offsets
+	li.Width += colorOffset
 	li.RuneOff = runeOff
 }
 

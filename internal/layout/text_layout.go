@@ -43,6 +43,9 @@ type TextLayout struct {
 	foldManager *folding.Manager
 	// visibleParagraphs maps visible paragraph indices to actual paragraph indices.
 	visibleParagraphs []int
+
+	// colorOffsets maps line number to character positions where color indicators should be inserted.
+	colorOffsets map[int]map[int]int
 }
 
 func NewTextLayout(src buffer.TextSource) TextLayout {
@@ -200,9 +203,21 @@ func (tl *TextLayout) calculateXOffsets() {
 	runeOff := 0
 	for i, line := range tl.Lines {
 		alignOff := tl.params.Alignment.Align(tl.params.Locale.Direction, line.Width, tl.params.MaxWidth)
-		tl.Lines[i].recompute(alignOff, runeOff)
+
+		// Get color offsets for this line
+		var lineColorOffsets map[int]int
+		if tl.colorOffsets != nil {
+			lineColorOffsets = tl.colorOffsets[i]
+		}
+
+		tl.Lines[i].recompute(alignOff, runeOff, lineColorOffsets)
 		runeOff += line.Runes
 	}
+}
+
+// SetColorOffsets sets the color offsets for the text layout.
+func (tl *TextLayout) SetColorOffsets(offsets map[int]map[int]int) {
+	tl.colorOffsets = offsets
 }
 
 func (tl *TextLayout) shapeRune(shaper *text.Shaper, params text.Parameters, r rune) (text.Glyph, error) {

@@ -6,7 +6,9 @@ import (
 	"gioui.org/layout"
 	"gioui.org/text"
 	"gioui.org/unit"
+	"gioui.org/widget/material"
 	gvcolor "github.com/oligo/gvcode/color"
+	lt "github.com/oligo/gvcode/internal/layout"
 	"golang.org/x/image/math/fixed"
 )
 
@@ -73,6 +75,10 @@ type GutterContext struct {
 	// LineNumberWidth is the width of the line number column in pixels.
 	// This is set by the gutter manager when a line number provider is present.
 	LineNumberWidth int
+
+	// LayoutLines contains the layout lines from the text layouter.
+	// This is used by color indicators to get accurate glyph positions.
+	LayoutLines []lt.Line
 }
 
 // Paragraph contains metadata about a paragraph (logical line) in the document.
@@ -153,3 +159,25 @@ const (
 	RunButtonMain
 	RunButtonTest
 )
+
+// ColorPickerLayout is an interface for color picker layout.
+type ColorPickerLayout interface {
+	Update(gtx layout.Context)
+	Layout(gtx layout.Context, th *material.Theme) layout.Dimensions
+}
+
+// ColorPickerProvider is an interface for providers that can show a color picker.
+type ColorPickerProvider interface {
+	GutterProvider
+	// ShowColorPicker returns whether the color picker should be shown.
+	ShowColorPicker() bool
+	// GetEditorColorPicker returns the editor color picker instance.
+	GetEditorColorPicker() ColorPickerLayout
+	// RenderInTextArea renders color indicators in the text area (not gutter).
+	RenderInTextArea(gtx layout.Context, ctx GutterContext, gutterWidth int)
+	// GetColorOffsets returns the character offsets where color indicators should be inserted.
+	// Returns a map from line number to a slice of character offsets.
+	GetColorOffsets() map[int][]int
+	// GetIndicatorWidth returns the width of the color indicator in pixels.
+	GetIndicatorWidth(gtx layout.Context) int
+}

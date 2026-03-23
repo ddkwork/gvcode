@@ -1,7 +1,6 @@
 package gvcode
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"io"
@@ -20,6 +19,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
+	"gioui.org/widget/material"
 	gvcolor "github.com/oligo/gvcode/color"
 	"github.com/oligo/gvcode/gutter"
 	"github.com/oligo/gvcode/internal/buffer"
@@ -84,6 +84,11 @@ type Editor struct {
 	columnEdit columnEditState
 	// sticky lines state
 	stickyLinesClicker gesture.Click
+}
+
+// GetGutterManager returns the gutter manager instance
+func (e *Editor) GetGutterManager() *gutter.Manager {
+	return e.gutterManager
 }
 
 // columnEditState tracks state for column/vertical editing mode
@@ -258,11 +263,15 @@ func (e *Editor) Layout(gtx layout.Context, lt *text.Shaper) layout.Dimensions {
 			return layout.Dimensions{}
 		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+			// Set color offsets before layout
+			e.setColorOffsets(gtx)
 			e.text.Layout(gtx, lt)
 			dims := e.layout(gtx, lt)
 			if e.completor != nil {
 				e.text.PaintOverlay(gtx, e.completor.Offset(), e.completor.Layout)
 			}
+			// Render color picker overlay if needed
+			e.renderColorPickerOverlay(gtx)
 			return dims
 		}),
 	)
@@ -271,13 +280,32 @@ func (e *Editor) Layout(gtx layout.Context, lt *text.Shaper) layout.Dimensions {
 func (e *Editor) layout(gtx layout.Context, shaper *text.Shaper) layout.Dimensions {
 	defer clip.Rect(image.Rectangle{Max: gtx.Constraints.Max}).Push(gtx.Ops).Pop()
 	pointer.CursorText.Add(gtx.Ops)
-	event.Op(gtx.Ops, e)
+
+	// Check if color picker is open
+	colorPickerOpen := false
+	if e.gutterManager != nil {
+		providers := e.gutterManager.Providers()
+		for _, p := range providers {
+			if colorPickerProvider, ok := p.(gutter.ColorPickerProvider); ok && colorPickerProvider.ShowColorPicker() {
+				colorPickerOpen = true
+				break
+			}
+		}
+	}
+
+	// Only add event handler if color picker is not open
+	if !colorPickerOpen {
+		event.Op(gtx.Ops, e)
+	}
 
 	// e.scroller.Add(gtx.Ops)
 
-	e.clicker.Add(gtx.Ops)
-	e.dragger.Add(gtx.Ops)
-	e.hover.Add(gtx.Ops)
+	// Only add event handlers if color picker is not open
+	if !colorPickerOpen {
+		e.clicker.Add(gtx.Ops)
+		e.dragger.Add(gtx.Ops)
+		e.hover.Add(gtx.Ops)
+	}
 	e.showCaret = false
 	if gtx.Focused(e) {
 		now := gtx.Now
@@ -318,6 +346,8 @@ func (e *Editor) layout(gtx layout.Context, shaper *text.Shaper) layout.Dimensio
 		}
 
 		e.paintText(gtx, textColor)
+
+		e.renderColorIndicatorsInText(gtx, shaper)
 	}
 
 	// Paint column selection if active
@@ -1189,11 +1219,9 @@ func (StickyLineEventWrapper) isEditorEvent() {}
 // out of view, helping users maintain context.
 func (e *Editor) renderStickyLines(gtx layout.Context, shaper *text.Shaper, textColor gvcolor.Color) {
 	if e.gutterManager == nil {
-		fmt.Println("[StickyLines] DEBUG: gutterManager is nil")
 		return
 	}
 
-	// Find the sticky lines provider
 	var stickyProvider interface {
 		GetStickyLinesInfo() ([]struct {
 			Line   int
@@ -1222,18 +1250,15 @@ func (e *Editor) renderStickyLines(gtx layout.Context, shaper *text.Shaper, text
 	}
 
 	if stickyProvider == nil {
-		fmt.Println("[StickyLines] DEBUG: stickyProvider is nil")
 		return
 	}
 
 	stickyLines, stickyHeight := stickyProvider.GetStickyLinesInfo()
-	fmt.Printf("[StickyLines] DEBUG: stickyLines=%d, stickyHeight=%d\n", len(stickyLines), stickyHeight)
 	if len(stickyLines) == 0 || stickyHeight == 0 {
 		return
 	}
 
 	lineHeight := e.text.GetLineHeight().Round()
-	fmt.Printf("[StickyLines] DEBUG: lineHeight=%d\n", lineHeight)
 
 	// Set up colors
 	var bgColor, borderColor color.NRGBA
@@ -1314,11 +1339,8 @@ func (e *Editor) renderStickyLines(gtx layout.Context, shaper *text.Shaper, text
 		}
 	}
 
-	// Process click events (MUST be after registering click areas!)
-	fmt.Println("[StickyLines] DEBUG: Processing click events...")
 	for {
 		evt, ok := e.stickyLinesClicker.Update(gtx.Source)
-		fmt.Printf("[StickyLines] DEBUG: evt=%+v, ok=%v\n", evt, ok)
 		if !ok {
 			break
 		}
@@ -1326,17 +1348,13 @@ func (e *Editor) renderStickyLines(gtx layout.Context, shaper *text.Shaper, text
 		if evt.Kind == gesture.KindClick {
 			clickY := int(evt.Position.Y)
 			stickyLineIndex := clickY / lineHeight
-			fmt.Printf("[StickyLines] DEBUG: CLICK! clickY=%d, stickyLineIndex=%d, lineHeight=%d\n", clickY, stickyLineIndex, lineHeight)
 
 			if stickyLineIndex >= 0 && stickyLineIndex < len(stickyLines) {
 				targetLine := stickyLines[stickyLineIndex].Line
-				fmt.Printf("[StickyLines] DEBUG: Jumping to line %d\n", targetLine)
 				e.moveToLine(targetLine)
 
-				// Also notify provider
 				stickyProvider.HandleStickyLineClick(clickY)
 
-				// Generate event
 				e.pending = append(e.pending, StickyLineEventWrapper{
 					Event: gutter.StickyLineEvent{
 						Line: targetLine,
@@ -1362,4 +1380,99 @@ func (e *Editor) moveToLine(lineNum int) {
 
 	// Scroll to make this line visible near the top
 	e.text.ScrollRel(0, para.StartY-scrollOff.Y)
+}
+
+// renderColorPickerOverlay renders the color picker overlay if needed.
+func (e *Editor) setColorOffsets(gtx layout.Context) {
+	if e.gutterManager == nil {
+		return
+	}
+
+	// Find the color indicator provider
+	var colorPickerProvider gutter.ColorPickerProvider
+
+	providers := e.gutterManager.Providers()
+	for _, p := range providers {
+		if p.ID() == "colorindicator" {
+			if ci, ok := p.(gutter.ColorPickerProvider); ok {
+				colorPickerProvider = ci
+				break
+			}
+		}
+	}
+
+	if colorPickerProvider == nil {
+		return
+	}
+
+	// Get color offsets from the provider
+	colorOffsets := colorPickerProvider.GetColorOffsets()
+	if len(colorOffsets) == 0 {
+		return
+	}
+
+	// Convert color offsets to the format expected by text layout
+	indicatorWidth := colorPickerProvider.GetIndicatorWidth(gtx)
+	layoutOffsets := make(map[int]map[int]int)
+
+	for line, offsets := range colorOffsets {
+		lineOffsets := make(map[int]int)
+		for _, offset := range offsets {
+			lineOffsets[offset] = indicatorWidth
+		}
+		layoutOffsets[line] = lineOffsets
+	}
+
+	// Set the color offsets in the text layout
+	e.text.SetColorOffsets(layoutOffsets)
+}
+
+func (e *Editor) renderColorPickerOverlay(gtx layout.Context) {
+	if e.gutterManager == nil {
+		return
+	}
+
+	var colorPickerProvider gutter.ColorPickerProvider
+
+	providers := e.gutterManager.Providers()
+	for _, p := range providers {
+		if p.ID() == "colorindicator" {
+			if ci, ok := p.(gutter.ColorPickerProvider); ok {
+				colorPickerProvider = ci
+				break
+			}
+		}
+	}
+
+	if colorPickerProvider == nil {
+		return
+	}
+
+	if !colorPickerProvider.ShowColorPicker() {
+		return
+	}
+
+	colorPicker := colorPickerProvider.GetEditorColorPicker()
+	if colorPicker != nil {
+		colorPicker.Update(gtx)
+		th := material.NewTheme()
+		colorPicker.Layout(gtx, th)
+	}
+}
+
+func (e *Editor) renderColorIndicatorsInText(gtx layout.Context, shaper *text.Shaper) {
+	if e.gutterManager == nil {
+		return
+	}
+
+	providers := e.gutterManager.Providers()
+	for _, p := range providers {
+		if p.ID() == "colorindicator" {
+			if ci, ok := p.(gutter.ColorPickerProvider); ok {
+				ctx := e.buildGutterContext(gtx, shaper)
+				ci.RenderInTextArea(gtx, ctx, e.gutterWidth)
+				break
+			}
+		}
+	}
 }
