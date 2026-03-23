@@ -207,3 +207,14 @@ func WithDefaultGutters() EditorOption {
 		e.gutterManager.Register(providers.NewLineNumberProvider())
 	}
 }
+
+// WithRunButtons enables run buttons for main and test functions in the gutter.
+func WithRunButtons() EditorOption {
+	return func(e *Editor) {
+		e.initBuffer()
+		if e.gutterManager == nil {
+			e.gutterManager = gutter.NewManager()
+		}
+		e.gutterManager.Register(providers.NewRunButtonProvider())
+	}
+}
